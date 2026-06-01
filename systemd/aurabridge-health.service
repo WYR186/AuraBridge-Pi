@@ -1,0 +1,19 @@
+# AuraBridge health snapshot — runs status.sh once and logs the result to the
+# journal. Read-only; safe; enables nothing else. Useful at boot and on demand
+# (systemctl --user start aurabridge-health.service; journalctl --user -u aurabridge-health).
+#
+# USER service: install to ~/.config/systemd/user/ so status.sh can see the
+# user PipeWire session. Enable (optional) with:
+#   systemctl --user enable --now aurabridge-health.service
+
+[Unit]
+Description=AuraBridge health snapshot (runs status.sh, logs to journal)
+Documentation=file:%h/AuraBridge-Pi/README.md
+After=pipewire.service wireplumber.service pipewire-pulse.service
+
+[Service]
+Type=oneshot
+ExecStart=%h/AuraBridge-Pi/scripts/status.sh
+
+[Install]
+WantedBy=default.target

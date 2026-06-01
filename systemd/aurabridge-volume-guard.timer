@@ -1,0 +1,21 @@
+# Periodic trigger for the AuraBridge volume guard.
+#
+# RECOVERY / DIAGNOSTICS ONLY. Polling on a timer is NOT real-time speaker
+# protection and is NOT a condition for enabling DLNA. See docs/volume-safety.md.
+#
+# USER timer: install to ~/.config/systemd/user/ and enable with:
+#   systemctl --user enable --now aurabridge-volume-guard.timer
+# (For headless boot without login: loginctl enable-linger "$USER".)
+
+[Unit]
+Description=Periodic AuraBridge volume guard (recovery/diagnostics only)
+Documentation=file:%h/AuraBridge-Pi/docs/volume-safety.md
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=5s
+AccuracySec=1s
+Unit=aurabridge-volume-guard.service
+
+[Install]
+WantedBy=timers.target

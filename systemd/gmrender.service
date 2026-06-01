@@ -1,0 +1,32 @@
+# AuraBridge DLNA renderer (gmediarender / gmrender-resurrect) — Phase 6.
+#
+# GATED + DISABLED BY DESIGN:
+#   - ExecStartPre refuses to start unless the AuraBridge Safe Sink has been
+#     VERIFIED (logs/safe-sink-verified.txt contains SAFE_SINK_VERIFIED=yes,
+#     written only by test-safe-sink.sh). So the unit stays INERT until real-time
+#     audio safety is verified.
+#   - There is intentionally NO [Install] section, so it CANNOT be enabled with
+#     `systemctl --user enable` and will never autostart at boot. Start it
+#     manually: `systemctl --user start gmrender.service`.
+#   - Audio routes through pipewire-pulse to the verified Safe Sink
+#     (PULSE_SINK=aurabridge_safe_sink), never directly to ALSA hw:/plughw:.
+#
+# Installed as a USER service by scripts/install-dlna.sh (which itself refuses to
+# run unless the Safe Sink is verified). See docs/dlna.md and docs/volume-safety.md.
+
+[Unit]
+Description=AuraBridge DLNA renderer (gmediarender via Safe Sink; gated, NOT enabled by default)
+Documentation=file:%h/AuraBridge-Pi/docs/dlna.md
+After=pipewire.service pipewire-pulse.service wireplumber.service
+Wants=pipewire-pulse.service
+
+[Service]
+# Hard start-time gate: do not start unless the Safe Sink is verified.
+ExecStartPre=/bin/sh -c 'grep -q "^SAFE_SINK_VERIFIED=yes" "%h/AuraBridge-Pi/logs/safe-sink-verified.txt"'
+# Route through pipewire-pulse to the verified Safe Sink (NOT ALSA hardware).
+Environment=PULSE_SINK=aurabridge_safe_sink
+ExecStart=/usr/bin/gmediarender --friendly-name "Aura Studio 3 DLNA" --gstout-audiosink pulsesink
+Restart=on-failure
+RestartSec=5
+
+# No [Install] section ON PURPOSE: this unit must not be enabled / autostarted.

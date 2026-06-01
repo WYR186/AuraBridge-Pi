@@ -1,0 +1,24 @@
+# AuraBridge volume guard — RECOVERY / AUDIT / DIAGNOSTICS ONLY.
+#
+# This is NOT real-time speaker protection. It is NOT a limiter or hard cap.
+# It must NOT be cited as the reason DLNA is safe to enable. It performs a
+# single after-the-fact volume check per run (driven by the timer) and clamps
+# the default sink back down if it exceeds the configured maximum.
+# See docs/volume-safety.md.
+#
+# USER service: install to ~/.config/systemd/user/ and run as your login user
+# (wpctl needs the user PipeWire session). It is triggered by
+# aurabridge-volume-guard.timer, so it intentionally has no [Install] section.
+
+[Unit]
+Description=AuraBridge volume guard (recovery/diagnostics only; NOT speaker protection)
+Documentation=file:%h/AuraBridge-Pi/docs/volume-safety.md
+After=pipewire.service wireplumber.service
+
+[Service]
+Type=oneshot
+# --once: single check-and-clamp pass, then exit. The timer re-runs it.
+ExecStart=%h/AuraBridge-Pi/scripts/volume-guard-loop.sh --once
+# Tunables (defaults shown); polling is recovery only, never a safety guarantee.
+Environment=SAFE_VOLUME=0.30
+Environment=MAX_VOLUME=0.45

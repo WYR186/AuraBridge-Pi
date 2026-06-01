@@ -1,0 +1,22 @@
+# librespot (Spotify Connect) for AuraBridge — Phase 3.
+#
+# USER service: install to ~/.config/systemd/user/ so it shares the
+# pipewire-pulse session. install-spotify.sh sets this up (and enables linger).
+#
+# Output goes through the PulseAudio backend -> pipewire-pulse -> PipeWire.
+# There is intentionally NO ALSA device ID here (no direct hw:/plughw: routing).
+# --initial-volume keeps the first stream at a safe level.
+
+[Unit]
+Description=AuraBridge librespot (Spotify Connect via pipewire-pulse)
+Documentation=file:%h/AuraBridge-Pi/docs/spotify.md
+After=pipewire.service pipewire-pulse.service wireplumber.service
+Wants=pipewire-pulse.service
+
+[Service]
+ExecStart=%h/.local/bin/librespot --name "Aura Studio 3 Spotify" --backend pulseaudio --initial-volume 30
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
