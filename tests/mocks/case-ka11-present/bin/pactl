@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -euo pipefail
+case_dir="$(cd "$(dirname "$0")/.." && pwd)"
+export MOCK_CASE="$(basename "$case_dir")"
+export MOCK_COMMAND="$(basename "$0")"
+exec "$(cd "$case_dir/.." && pwd)/mock-command.sh" "$@"

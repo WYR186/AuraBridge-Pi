@@ -149,6 +149,11 @@ Phase 4–6 are covered in [docs/runbook-phase-4-6.md](docs/runbook-phase-4-6.md
 - [docs/wireplumber-versioning.md](docs/wireplumber-versioning.md) — version policy
 - [docs/airplay2.md](docs/airplay2.md) — AirPlay 2 setup & test
 - [docs/spotify.md](docs/spotify.md) — Spotify Connect setup & test
+- [docs/pi-bringup-checklist.md](docs/pi-bringup-checklist.md) — first hardware checklist
+- [docs/first-boot-runbook.md](docs/first-boot-runbook.md) — exact first-boot command order
+- [docs/pass-fail-matrix.md](docs/pass-fail-matrix.md) — bring-up PASS/WARN/FAIL criteria
+- [docs/rollback.md](docs/rollback.md) — safe service rollback commands
+- [docs/known-risks-before-hardware.md](docs/known-risks-before-hardware.md) — risks before Pi validation
 - [docs/runbook-phase-0-3.md](docs/runbook-phase-0-3.md) — full runbook
 - [docs/runbook-phase-4-6.md](docs/runbook-phase-4-6.md) — Bluetooth, Safe Sink, gated DLNA
 - [docs/bluetooth-policy.md](docs/bluetooth-policy.md) — controlled Bluetooth policy
