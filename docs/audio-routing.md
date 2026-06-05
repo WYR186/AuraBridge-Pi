@@ -46,6 +46,24 @@ Once the Safe Sink exists (Phase 5), normal clients target the Safe Sink and the
 **KA11 physical sink stops being the default**. That is also the precondition
 for ever enabling DLNA (Phase 6). None of that is done here.
 
+## Selecting the physical output (onboard AUX vs USB dongle)
+
+The final `default sink` above can be **either** the FiiO KA11 USB DAC **or** the
+Pi's onboard 3.5 mm AUX (`bcm2835 Headphones`). Which one is used is decided by
+the shared selector ([`scripts/lib/output-target.sh`](../scripts/lib/output-target.sh)),
+not by anything hardcoded in the routing graph:
+
+```bash
+./scripts/select-output.sh onboard   # Pi built-in 3.5 mm jack
+./scripts/select-output.sh usb       # USB DAC dongle (小尾巴 / KA11)
+./scripts/select-output.sh auto      # prefer the dongle when present, else onboard (default)
+```
+
+Either way the device is referenced by its **dynamically detected PipeWire sink
+name**, never an ALSA card number, and clients never touch `hw:`/`plughw:`. The
+Safe Sink (below) targets whichever output is selected. Full details:
+[onboard-audio.md](onboard-audio.md).
+
 ## Why PulseAudio backend (not native PipeWire)
 
 For the MVP, Shairport Sync and librespot use their **PulseAudio** output, which

@@ -36,8 +36,11 @@ Aura Studio 3  AUX-IN
 
 ## Rules
 
-- **Do not** use the Raspberry Pi onboard 3.5 mm jack as the final output. The
-  KA11 is the designated DAC.
+- The KA11 is the designated **final** output / DAC for the finished build.
+- The Raspberry Pi onboard 3.5 mm jack is supported as an **interim / fallback**
+  output for bring-up before the dongle arrives — it is PWM-based and lower
+  quality, so it is not the intended final output. Select it with
+  `./scripts/select-output.sh onboard`; see [onboard-audio.md](onboard-audio.md).
 - **Do not** use a passive Type-C → 3.5 mm analog passthrough adapter. The KA11
   is an active USB Audio Class device and must enumerate over USB.
 - The KA11 must appear as a **USB audio device** (`lsusb`, `aplay -l`). If it

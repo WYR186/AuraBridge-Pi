@@ -7,6 +7,8 @@ set -euo pipefail
 HINTS='fiio|ka11|usb audio|usb-audio|\bdac\b|headphone'
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/output-target.sh
+. "$SCRIPT_DIR/lib/output-target.sh"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 SS_MARKER="$REPO_ROOT/logs/safe-sink-verified.txt"
 
@@ -65,13 +67,22 @@ else
 fi
 
 echo
+echo "[ Output selection ]"
+printf '  %-26s %s\n' "Configured:" "$(output_configured_target)"
+printf '  %-26s %s\n' "Effective:" "$(output_effective_target) — $(describe_output_target)"
+ob_sink="$(detect_sink_by_kind onboard 2>/dev/null || true)"; usb_sink="$(detect_sink_by_kind usb 2>/dev/null || true)"
+printf '  %-26s %s\n' "Onboard sink (bcm2835):" "${ob_sink:-(none)}"
+printf '  %-26s %s\n' "USB dongle/DAC sink:" "${usb_sink:-(none)}"
+printf '  %-26s %s\n' "(switch output:)" "./scripts/select-output.sh onboard|usb|auto"
+
+echo
 echo "[ KA11 / USB DAC detection ]"
 ka11_usb="no"; ka11_sink="no"
 have lsusb && lsusb 2>/dev/null | grep -iE "$HINTS" >/dev/null 2>&1 && ka11_usb="yes"
 have pactl && pactl list sinks short 2>/dev/null | grep -iE "$HINTS" >/dev/null 2>&1 && ka11_sink="yes"
 printf '  %-26s %s\n' "Seen on USB (lsusb):" "$ka11_usb"
 printf '  %-26s %s\n' "Seen as PipeWire sink:" "$ka11_sink"
-printf '  %-26s %s\n' "(full validation:)" "./scripts/check-ka11.sh"
+printf '  %-26s %s\n' "(full validation:)" "./scripts/check-output.sh"
 
 echo
 echo "[ Phase 2/3 services ]"

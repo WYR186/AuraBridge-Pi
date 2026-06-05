@@ -16,8 +16,8 @@ have() { command -v "$1" >/dev/null 2>&1; }
 
 cd "$REPO_ROOT"
 
-section "bash -n scripts/*.sh tests/*.sh"
-if bash -n scripts/*.sh tests/*.sh; then
+section "bash -n scripts/*.sh scripts/lib/*.sh tests/*.sh"
+if bash -n scripts/*.sh scripts/lib/*.sh tests/*.sh; then
   ok "bash syntax passed"
 else
   fail "bash syntax failed"
@@ -25,7 +25,9 @@ fi
 
 section "shellcheck"
 if have shellcheck; then
-  if shellcheck scripts/*.sh tests/*.sh tests/mocks/mock-command.sh; then
+  # -x follows 'source'/'.' into scripts/lib/*.sh; -P SCRIPTDIR resolves the
+  # 'source=' directives relative to each script's own dir (resolves SC1091).
+  if shellcheck -x -P SCRIPTDIR scripts/*.sh scripts/lib/*.sh tests/*.sh tests/mocks/mock-command.sh; then
     ok "shellcheck passed"
   else
     fail "shellcheck found issues"

@@ -9,6 +9,11 @@ and sends it out through a **FiiO KA11 Type-C USB DAC** over a 3.5 mm AUX cable
 into the Aura Studio 3. The speaker is never opened or modified — the Pi is an
 external bridge.
 
+> **Output is selectable.** Before the USB dongle arrives you can run the same
+> stack out of the Pi's built-in 3.5 mm AUX jack, then switch to the KA11 with a
+> single command — see [docs/onboard-audio.md](docs/onboard-audio.md). Pick the
+> output with `./scripts/select-output.sh onboard|usb|auto`.
+
 > **Current validation status:** Phase 0–3 are implemented, and Phase 4–6 now
 > have conservative scripts and documentation. This checkout was updated on a
 > development Mac, **not** on the actual Raspberry Pi, so Phase 4–6 are
@@ -112,7 +117,16 @@ physical button. See [docs/hardware.md](docs/hardware.md).
 ./scripts/setup-base.sh
 ./scripts/setup-pipewire.sh
 ./scripts/wireplumber-version-check.sh
-./scripts/check-ka11.sh
+
+# --- Choose the audio output --------------------------------------------------
+# No USB dongle yet? Use the Pi's built-in 3.5 mm AUX jack:
+./scripts/setup-onboard-audio.sh        # enables the jack (may need one reboot)
+./scripts/select-output.sh onboard
+# Have the FiiO KA11 USB dongle (小尾巴)? Use it instead (or 'auto'):
+# ./scripts/select-output.sh usb
+# -----------------------------------------------------------------------------
+
+./scripts/check-output.sh               # validates whichever output is selected
 ./scripts/safe-volume.sh
 
 # Phase 2 (AirPlay 2)
@@ -142,7 +156,10 @@ Phase 4–6 are covered in [docs/runbook-phase-4-6.md](docs/runbook-phase-4-6.md
 
 ## Documentation
 
+- [docs/RASPBERRY_PI_SETUP.md](docs/RASPBERRY_PI_SETUP.md) — Pi connection info & headless mode setup ⭐ **Start here**
+- [docs/RASPBERRY_PI_CREDENTIALS.md](docs/RASPBERRY_PI_CREDENTIALS.md) — SSH credentials & system info (secured)
 - [docs/hardware.md](docs/hardware.md) — hardware and wiring
+- [docs/onboard-audio.md](docs/onboard-audio.md) — onboard 3.5 mm AUX output & switching to the USB dongle
 - [docs/ka11-validation.md](docs/ka11-validation.md) — KA11 detection & mixer
 - [docs/audio-routing.md](docs/audio-routing.md) — PipeWire routing model
 - [docs/volume-safety.md](docs/volume-safety.md) — the volume safety rules
