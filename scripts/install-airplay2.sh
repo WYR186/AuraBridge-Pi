@@ -118,17 +118,30 @@ else
   warn "--with-systemd-startup not supported by this Shairport Sync; will not pass it."
 fi
 
-# Enable the native D-Bus interface if supported. The AuraBridge source arbiter
-# (scripts/source-arbiter.sh) uses org.gnome.ShairportSync.RemoteControl.Stop to
-# tell the iPhone to stop when another protocol barges in (true barge-in, not
-# just local muting). Without it, the arbiter falls back to muting AirPlay.
+# OPTIONAL native D-Bus interface — OFF by default.
+#
+# The source arbiter can use org.gnome.ShairportSync.RemoteControl.Pause to make a
+# displaced iPhone pause (gentle hand-off), but that is an OPT-IN extra (the
+# arbiter works fine with plain muting). Building with --with-dbus changes the
+# shairport-sync binary, and a changed AirPlay build is exactly the kind of thing
+# that broke AirPlay before, so the DEFAULT build is left byte-for-byte the same
+# as the known-good one.
+#
+# Only add it when you have explicitly opted in AND also intend to enable the
+# arbiter's AirPlay pause (AURABRIDGE_ARBITER_AIRPLAY_PAUSE=1). Enable here with:
+#   AURABRIDGE_AIRPLAY_DBUS=1 ./scripts/install-airplay2.sh
 DBUS_FLAG=""
-if printf '%s\n' "$CONFIG_HELP" | grep -q -- '--with-dbus'; then
-  DBUS_FLAG="--with-dbus"
-  log "Enabling shairport-sync D-Bus interface (--with-dbus) for arbiter remote-stop."
+if [[ "${AURABRIDGE_AIRPLAY_DBUS:-0}" =~ ^(1|yes|true|on)$ ]]; then
+  if printf '%s\n' "$CONFIG_HELP" | grep -q -- '--with-dbus'; then
+    DBUS_FLAG="--with-dbus"
+    log "AURABRIDGE_AIRPLAY_DBUS set: enabling shairport-sync D-Bus interface (--with-dbus)."
+    warn "Validate AirPlay still connects/plays after this build before relying on it."
+  else
+    warn "AURABRIDGE_AIRPLAY_DBUS set but this Shairport Sync has no --with-dbus; skipping."
+  fi
 else
-  warn "--with-dbus not supported by this Shairport Sync; AirPlay protocol-level Stop"
-  warn "will be unavailable (the source arbiter will fall back to muting AirPlay)."
+  log "Default AirPlay build (no --with-dbus). The arbiter will barge-in by muting."
+  log "For opt-in AirPlay protocol-Stop, rebuild with: AURABRIDGE_AIRPLAY_DBUS=1 ./scripts/install-airplay2.sh"
 fi
 
 log "Configuring Shairport Sync (AirPlay 2 + native PipeWire backend, no direct ALSA)..."
@@ -177,6 +190,13 @@ general = {
   mdns_backend = "avahi";
   interface = "wlan0";
   port = 7000;
+};
+sessioncontrol = {
+  // HomePod-style barge-in at the CONNECTION level: let a newly-connecting
+  // device INTERRUPT the current AirPlay session instead of getting a "busy"
+  // signal. Upstream default is "no" (busy for session_timeout=120s). This is
+  // the connection-plane takeover; the source arbiter handles the playback plane.
+  allow_session_interruption = "yes";
 };
 diagnostics = {
   log_verbosity = 1;

@@ -6,8 +6,9 @@
 #
 # It implements barge-in (newest wireless source wins the speaker) at the
 # PLAYBACK plane only. It never touches discovery, so AirPlay / Spotify / DLNA
-# stay visible at the same time. It NEVER raises volume. By default it only
-# mutes displaced sources locally; protocol-level Stop is opt-in.
+# stay visible at the same time. It NEVER raises volume. On barge-in it mutes the
+# displaced source (always) and asks its phone to PAUSE over its own protocol —
+# DLNA on, AirPlay opt-in, Spotify mute-only.
 # See docs/source-arbiter.md and docs/volume-safety.md.
 
 [Unit]
@@ -17,7 +18,12 @@ After=pipewire.service pipewire-pulse.service wireplumber.service
 Wants=pipewire-pulse.service
 
 [Service]
-Environment=AURABRIDGE_ARBITER_PROTOCOL_STOP=0
+# Barge-in pauses the displaced phone over its own protocol (gentle, not Stop).
+# DLNA pause is on (safe); AirPlay pause is OFF until validated on the Pi (it
+# needs shairport-sync built with AURABRIDGE_AIRPLAY_DBUS=1). Spotify can only be
+# muted. Muting is always the guaranteed floor regardless of these.
+Environment=AURABRIDGE_ARBITER_DLNA_PAUSE=1
+Environment=AURABRIDGE_ARBITER_AIRPLAY_PAUSE=0
 ExecStart=%h/AuraBridge-Pi/scripts/source-arbiter.sh --run
 # Belt-and-suspenders: if we are killed without running the SIGTERM trap, make
 # sure no source is left muted.

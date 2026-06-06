@@ -6,22 +6,32 @@ set -uo pipefail
 # source-arbiter.sh — AuraBridge playback arbiter (Phase 7, "中控修正").
 #
 # POLICY: barge-in. The most recently started wireless source wins the speaker;
-# every other source that is playing is preempted. All protocols stay DISCOVERED
+# every other source that is ALSO playing is muted. All protocols stay DISCOVERED
 # the whole time (AirPlay/mDNS, Spotify/Avahi, DLNA/SSDP are independent buses) —
 # the arbiter only touches the PLAYBACK plane, never discovery.
 #
-# Preemption is done on the PipeWire playback plane by default: displaced
-# sink-inputs are muted so the speaker only plays the winner. Optional
-# protocol-level Stop can be enabled with AURABRIDGE_ARBITER_PROTOCOL_STOP=1,
-# but it is deliberately off by default because it can make AirPlay/DLNA sender
-# UIs look disconnected even though discovery remains available.
+# DESIGN (rebuilt to never break single-source playback):
+#   - Idempotent reconcile. Every pass recomputes the desired state from a fresh
+#     snapshot and converges to it. There is no event-delta state machine, so a
+#     missed/duplicated event cannot strand a source muted.
+#   - SAFETY RULE: when 0 or 1 managed source is playing, the arbiter mutes
+#     NOTHING and makes sure that lone source is audible. AirPlay (or any source)
+#     used on its own is therefore never touched.
+#   - Self-healing watchdog. The event loop also reconciles on a periodic tick,
+#     so any drift auto-corrects.
+#   - We only ever unmute streams WE muted (tracked in _muted); a user/app mute is
+#     left alone during steady state.
+#   - Muting is non-destructive and reversible. On top of muting, the displaced
+#     phone is asked to PAUSE over its own protocol (not Stop/disconnect): DLNA on
+#     by default, AirPlay opt-in (needs --with-dbus), Spotify has no API so it can
+#     only be muted. It NEVER raises volume.
 #
-# It NEVER raises volume. See docs/source-arbiter.md and docs/volume-safety.md.
+# See docs/source-arbiter.md and docs/volume-safety.md.
 #
 # Usage:
-#   source-arbiter.sh            run the arbiter (foreground; systemd runs this)
-#   source-arbiter.sh --reset    unmute every managed source and exit
+#   source-arbiter.sh [--run]    run the arbiter (foreground; systemd runs this)
 #   source-arbiter.sh --once     reconcile once (apply barge-in now) and exit
+#   source-arbiter.sh --reset    unmute every managed source and exit
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/arbiter-lib.sh
@@ -29,29 +39,37 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 log() { printf '[arbiter] %s\n' "$*"; }
 
-# Id of the source that currently owns the speaker ("" = nobody yet).
-current_winner=""
+# Reconcile at least this often even with no events (watchdog seconds).
+ARB_TICK_SECONDS="${AURABRIDGE_ARBITER_TICK_SECONDS:-2}"
 
-# Last-seen corked state per sink-input, encoded as " id:state id:state ".
-# We only barge in on a TRANSITION into playing (a start or a resume), never on
-# a bare 'change' event — otherwise a metadata/volume tick on a muted background
-# stream (e.g. Spotify, which has no protocol stop and keeps streaming silently)
-# would be misread as a fresh barge-in and wrongly steal the speaker back. Plain
-# string map so this works on both bash 3.2 and bash 5 (no associative arrays).
-_last_cork=""
-_get_last_cork() {
+# --- arbiter state (plain string maps; works on bash 3.2 and 5) ---------------
+_ord=0      # monotonic counter: order in which sources were first seen playing
+_seen=""    # " id:ordinal id:ordinal " for currently-playing ids
+_muted=""   # " id id "  ids that WE muted (only these may be unmuted by us)
+
+# _seen: ordinal map keyed by sink-input id.
+_seen_get() { # echo ordinal and return 0, or return 1 if absent
   local id="$1" kv
-  for kv in $_last_cork; do
+  for kv in $_seen; do
     case "$kv" in "${id}:"*) printf '%s' "${kv#*:}"; return 0 ;; esac
   done
-  printf 'unknown'
+  return 1
 }
-_set_last_cork() {
-  local id="$1" st="$2" out="" kv
-  for kv in $_last_cork; do
+_seen_set() {
+  local id="$1" ord="$2" out="" kv
+  for kv in $_seen; do
     case "$kv" in "${id}:"*) ;; *) out="$out $kv" ;; esac
   done
-  _last_cork="$out ${id}:${st}"
+  _seen="$out ${id}:${ord}"
+}
+
+# _muted: simple set of ids.
+_muted_has() { case " $_muted " in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
+_muted_add() { _muted_has "$1" || _muted="$_muted $1"; }
+_muted_del() {
+  local id="$1" out="" x
+  for x in $_muted; do [[ "$x" == "$id" ]] || out="$out $x"; done
+  _muted="$out"
 }
 
 # Wait until pipewire-pulse answers, so we do not spin before the session is up.
@@ -68,81 +86,76 @@ wait_for_pulse() {
   return 0
 }
 
-# Preempt every managed source EXCEPT the winner: optional protocol-stop (opt-in)
-# then mute (guaranteed). Already-corked (paused) sources are left alone. We also
-# record each preempted source's corked state so the 'change' event our own mute
-# triggers is not later misread as that source barging back in.
-preempt_others() {
-  local winner_id="$1" id src corked _mute
-  while IFS='|' read -r id src corked _mute; do
-    [[ "$id" == "$winner_id" ]] && continue
-    [[ "$corked" == "yes" ]] && continue
-    if arb_protocol_stop "$src"; then
-      log "stopped $src (input #$id) via its own protocol"
-    fi
-    arb_mute_input "$id"
-    _set_last_cork "$id" "$corked"
-    log "preempted $src (input #$id) in favour of input #$winner_id"
-  done < <(arb_managed_inputs)
-}
-
-# Seed last-known corked state for every managed input without acting, so the
-# first organic event after startup is judged as a transition, not a cold start.
-seed_states() {
-  local id _s corked _m
-  while IFS='|' read -r id _s corked _m; do
-    _set_last_cork "$id" "$corked"
-  done < <(arb_managed_inputs)
-}
-
-# Promote the newest actively-playing managed source to winner and preempt the
-# rest. Used at startup and whenever the winner disappears.
+# The whole policy, expressed as "converge to desired state from a fresh
+# snapshot". Safe to call as often as we like; calling it twice is a no-op.
 reconcile() {
-  local id src corked _mute newest="" newest_src=""
-  while IFS='|' read -r id src corked _mute; do
-    if [[ "$corked" == "no" ]]; then newest="$id"; newest_src="$src"; fi
-  done < <(arb_managed_inputs)
-  if [[ -n "$newest" ]]; then
-    current_winner="$newest"
-    arb_unmute_input "$newest"
-    _set_last_cork "$newest" "no"
-    log "winner=$newest_src (input #$newest) [reconcile]"
-    preempt_others "$newest"
-  else
-    current_winner=""
-  fi
-}
+  local snap; snap="$(arb_managed_inputs)"
+  local id src corked _m ord
+  local playing="" winner="" winner_ord=-1
 
-# React to one sink-input id changing.
-handle_input() {
-  local id="$1" block src corked prev
-  block="$(_arb_input_block "$id")"
-  if [[ -z "$block" ]]; then
-    # The input is gone. If it was the winner, let a remaining source take over.
-    _set_last_cork "$id" "gone"
-    if [[ "$id" == "$current_winner" ]]; then
-      log "winner (input #$id) ended; reconciling"
-      current_winner=""
-      reconcile
+  # Pass 1: collect playing ids (Corked: no), assign ordinals to new ones, and
+  # track the winner = the playing id with the greatest ordinal (newest start).
+  while IFS='|' read -r id src corked _m; do
+    [[ -n "$id" ]] || continue
+    [[ "$corked" == "no" ]] || continue
+    playing="$playing $id"
+    if ! ord="$(_seen_get "$id")"; then
+      _ord=$((_ord + 1)); ord="$_ord"; _seen_set "$id" "$ord"
     fi
-    return
+    if [[ "$ord" -gt "$winner_ord" ]]; then winner_ord="$ord"; winner="$id"; fi
+  done < <(printf '%s\n' "$snap")
+
+  # Release anything WE muted that is no longer playing (stopped/paused/gone).
+  local mid
+  for mid in $_muted; do
+    case " $playing " in
+      *" $mid "*) : ;;
+      *) arb_unmute_input "$mid"; _muted_del "$mid"; log "released input #$mid (stopped/paused)" ;;
+    esac
+  done
+
+  # Prune the ordinal map down to currently-playing ids.
+  local kv sid newseen=""
+  for kv in $_seen; do
+    sid="${kv%%:*}"
+    case " $playing " in *" $sid "*) newseen="$newseen $kv" ;; esac
+  done
+  _seen="$newseen"
+
+  # Count playing sources.
+  local n=0
+  for id in $playing; do n=$((n + 1)); done
+
+  # SAFETY RULE: 0 or 1 source playing => mute NOTHING. Make the lone source
+  # audible if we had muted it. This is what makes single-source (e.g. AirPlay
+  # alone) immune to the arbiter.
+  if [[ "$n" -le 1 ]]; then
+    for id in $playing; do
+      if _muted_has "$id"; then
+        arb_unmute_input "$id"; _muted_del "$id"
+        log "single source: unmuted input #$id"
+      fi
+    done
+    return 0
   fi
-  src="$(_arb_classify_block "$block")"
-  [[ -z "$src" ]] && return
-  corked="$(_arb_field "$block" 'Corked:')"
-  prev="$(_get_last_cork "$id")"
-  _set_last_cork "$id" "$corked"
-  # Barge-in only on a TRANSITION into playing (start or resume): corked is "no"
-  # now but was not "no" before. A change event on an already-playing stream
-  # (volume, metadata, our own mute) is intentionally ignored.
-  if [[ "$corked" == "no" && "$prev" != "no" && "$id" != "$current_winner" ]]; then
-    arb_unmute_input "$id"
-    current_winner="$id"
-    log "winner=$src (input #$id) [barge-in]"
-    preempt_others "$id"
-  fi
+
+  # >= 2 sources playing: barge-in. Winner audible; everyone else muted.
+  if _muted_has "$winner"; then arb_unmute_input "$winner"; _muted_del "$winner"; fi
+  for id in $playing; do
+    [[ "$id" == "$winner" ]] && continue
+    _muted_has "$id" && continue
+    src="$(arb_source_of "$id")"
+    # Polite extra: ask the displaced phone to PAUSE over its own protocol
+    # (DLNA on by default, AirPlay opt-in, Spotify has no API). Mute is the
+    # guaranteed floor below, so the speaker is clean even if pause is a no-op.
+    arb_protocol_preempt "$src" && log "paused ${src:-?} (input #$id) on its phone"
+    arb_mute_input "$id"; _muted_add "$id"
+    log "barge-in: winner input #$winner; muted ${src:-?} (input #$id)"
+  done
 }
 
+# Unmute every managed source (used for clean-slate at startup and for --reset).
+# This is the only place we touch mutes we did not set, on purpose.
 unmute_all() {
   local id _s _c _m
   while IFS='|' read -r id _s _c _m; do
@@ -152,26 +165,28 @@ unmute_all() {
 
 run_loop() {
   wait_for_pulse || return 1
-  log "started (policy=barge-in, protocol_stop=${ARB_PROTOCOL_STOP:-0}). All protocols stay discoverable; newest source wins playback."
+  log "started (policy=barge-in, dlna_pause=${ARB_DLNA_PAUSE:-1}, airplay_pause=${ARB_AIRPLAY_PAUSE:-0}, tick=${ARB_TICK_SECONDS}s). All protocols stay discoverable; newest source wins playback."
   trap 'log "stopping; unmuting all managed sources"; unmute_all; exit 0' INT TERM
-  # Seed per-input state, then apply the rule once for whatever is already playing.
-  seed_states
+  # Clean slate: clear any stale mute left by a previous crashed run, reset state.
+  unmute_all
+  _ord=0; _seen=""; _muted=""
   reconcile
-  # Then react to every sink-input event. Process substitution keeps the loop in
-  # this shell so current_winner persists across events.
-  local ev id
-  while read -r ev; do
-    case "$ev" in
-      *sink-input*)
-        id="$(printf '%s' "$ev" | grep -oE '#[0-9]+' | head -n1 | tr -d '#')"
-        [[ -n "$id" ]] && handle_input "$id"
-        ;;
-    esac
+  # React to sink-input events for low latency, but also reconcile on a timeout
+  # so the policy self-heals even if an event is missed.
+  local ev rc
+  while :; do
+    if IFS= read -t "$ARB_TICK_SECONDS" -r ev; then
+      case "$ev" in *sink-input*) reconcile ;; esac
+    else
+      rc=$?
+      if [[ $rc -gt 128 ]]; then
+        reconcile                      # read timed out -> watchdog tick
+      else
+        log "pactl subscribe ended; exiting for restart"
+        return 1                       # EOF -> pipewire-pulse restarted
+      fi
+    fi
   done < <(pactl subscribe 2>/dev/null)
-  # If we get here, `pactl subscribe` ended (pipewire-pulse restarted). Exit
-  # non-zero so systemd restarts us and we re-subscribe cleanly.
-  log "pactl subscribe ended; exiting for restart"
-  return 1
 }
 
 arbiter_main() {
@@ -198,8 +213,8 @@ arbiter_main() {
   esac
 }
 
-# Only run when executed directly, so the decision functions above can be sourced
-# and unit-tested (tests/ and the mock harness rely on this guard).
+# Only run when executed directly, so the reconcile/state functions above can be
+# sourced and unit-tested (tests/test-arbiter-logic.sh relies on this guard).
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   arbiter_main "$@"
 fi

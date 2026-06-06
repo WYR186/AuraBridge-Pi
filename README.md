@@ -182,6 +182,8 @@ Phase 4–6 are covered in [docs/runbook-phase-4-6.md](docs/runbook-phase-4-6.md
 - [docs/safe-sink.md](docs/safe-sink.md) — Safe Sink design, verification, rollback
 - [docs/dlna.md](docs/dlna.md) — DLNA gate and safe manual procedure
 - [docs/source-arbiter.md](docs/source-arbiter.md) — barge-in arbiter: newest source wins, all protocols stay discoverable
+- [docs/airplay-takeover-and-discovery.md](docs/airplay-takeover-and-discovery.md) — why a 2nd phone can't see/take over a busy AirPlay device (Wi-Fi power save + session interruption)
+- [docs/field-note-2026-06-06-reboot-no-sound.md](docs/field-note-2026-06-06-reboot-no-sound.md) — reboot "connects but no sound" (Safe Sink → KA11 rebind), offline Pi, and the permanent fixes
 - [TROUBLESHOOTING.md](TROUBLESHOOTING.md) — common problems
 - [PROJECT_OVERVIEW_2_2.md](PROJECT_OVERVIEW_2_2.md) — English source of truth
 - [WHITEPAPER_2_2.md](WHITEPAPER_2_2.md) — design whitepaper

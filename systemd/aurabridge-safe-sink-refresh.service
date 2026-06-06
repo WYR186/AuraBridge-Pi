@@ -1,18 +1,29 @@
-# AuraBridge Safe Sink boot refresh.
+# AuraBridge Safe Sink boot refresh (USER service; shares the user PipeWire session).
 #
-# USB DACs may enumerate after the user PipeWire graph starts. This oneshot
-# waits for the selected output and reapplies the Safe Sink filter-chain so the
-# virtual sink's playback side lands on the intended physical device.
+# Fixes "AirPlay connects but no sound after reboot": a USB DAC (FiiO KA11)
+# enumerates a few seconds AFTER the user PipeWire graph starts, so the Safe Sink
+# filter-chain initially binds its output to the Pi onboard 3.5mm jack and the
+# speaker stays silent. This oneshot waits for the selected output and re-binds
+# the Safe Sink output onto it.
+#
+# Uses the LIGHT rebind (move the sink-input, no PipeWire restart). It falls back
+# to the heavier refresh-safe-sink.sh internally if the Safe Sink is missing.
+# See scripts/bind-safe-sink-output.sh and
+# docs/field-note-2026-06-06-reboot-no-sound.md.
+#
+# Enable once (linger is already on for this user):
+#   systemctl --user enable --now aurabridge-safe-sink-refresh.service
 
 [Unit]
-Description=AuraBridge Safe Sink boot refresh
+Description=AuraBridge re-bind Safe Sink output to selected output (e.g. KA11) after boot
 Documentation=file:%h/AuraBridge-Pi/docs/safe-sink.md
 After=pipewire.service pipewire-pulse.service wireplumber.service
 Wants=pipewire-pulse.service wireplumber.service
 
 [Service]
 Type=oneshot
-ExecStart=%h/AuraBridge-Pi/scripts/refresh-safe-sink.sh
+RemainAfterExit=yes
+ExecStart=%h/AuraBridge-Pi/scripts/bind-safe-sink-output.sh
 TimeoutStartSec=90
 
 [Install]

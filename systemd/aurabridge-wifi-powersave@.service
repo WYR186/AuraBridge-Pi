@@ -1,0 +1,27 @@
+# AuraBridge: disable Wi-Fi power save on a given interface (templated by iface).
+#
+# Raspberry Pi Wi-Fi (brcmfmac) defaults to power_save ON, which makes multicast
+# unreliable — mDNS (AirPlay discovery) and SSDP (DLNA discovery) get dropped,
+# especially while an audio stream is running, so other phones stop seeing the
+# device. This keeps power save OFF so the device stays discoverable while busy.
+# See docs/airplay-takeover-and-discovery.md.
+#
+# Used only when NetworkManager is NOT managing Wi-Fi. Under NetworkManager the
+# proper persistent setting is wifi.powersave=2 (setup-wifi-powersave.sh writes
+# the conf.d drop-in instead). Enable per interface, e.g.:
+#   sudo systemctl enable --now aurabridge-wifi-powersave@wlan0.service
+
+[Unit]
+Description=AuraBridge disable Wi-Fi power save on %i (keeps mDNS/SSDP discovery alive)
+After=sys-subsystem-net-devices-%i.device
+Wants=sys-subsystem-net-devices-%i.device
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# Use a shell so PATH resolves iw (/usr/sbin/iw or /sbin/iw) across OS versions.
+ExecStart=/bin/sh -c 'iw dev %i set power_save off'
+ExecStartPost=/bin/sh -c 'iw dev %i get power_save || true'
+
+[Install]
+WantedBy=multi-user.target

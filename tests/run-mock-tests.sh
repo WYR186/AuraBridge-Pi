@@ -124,6 +124,19 @@ for case_name in \
   run_core_case "$case_name"
 done
 
+section "Source arbiter logic"
+arb_out="$REPORT_DIR/arbiter-logic.txt"
+set +e
+( cd "$REPO_ROOT" && bash ./tests/test-arbiter-logic.sh ) >"$arb_out" 2>&1
+arb_rc=$?
+set -e
+if [[ "$arb_rc" -eq 0 ]] && grep -q 'single AirPlay not muted' "$arb_out"; then
+  ok "source arbiter logic tests passed (incl. single-source-never-muted guard)"
+else
+  cat "$arb_out"
+  fail "source arbiter logic tests failed; see $arb_out"
+fi
+
 section "No hardware-validation claims"
 if grep -R -n -i -E 'hardware validation (passed|complete)|real hardware validated|Raspberry Pi validation passed' "$REPORT_DIR" >/tmp/aurabridge-mock-claims.txt 2>/dev/null; then
   cat /tmp/aurabridge-mock-claims.txt
