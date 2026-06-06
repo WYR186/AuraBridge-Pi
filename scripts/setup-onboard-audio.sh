@@ -24,7 +24,7 @@ set -euo pipefail
 # the USB dongle remains the intended final output. See docs/onboard-audio.md.
 #
 # Env:
-#   SAFE_VOLUME=0.01   initial volume passed through to safe-volume.sh
+#   SAFE_VOLUME=1.00   initial volume passed through to safe-volume.sh
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/output-target.sh

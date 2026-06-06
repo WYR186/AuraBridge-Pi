@@ -39,7 +39,7 @@
 - **Hardware**: FiiO KA11 USB DAC → 3.5mm AUX → Aura Studio 3 AUX-IN
 - **Default Sink**: `aurabridge_safe_sink`
 - **Safe Sink Downstream**: `alsa_output.usb-FIIO_FIIO_KA11-01.analog-stereo`
-- **AirPlay Loudness Gain**: `1.30` with initial volume `0.01`
+- **AirPlay Loudness Gain**: `1.30` with initial volume `1.00`
 - **DLNA Safety Note**: old `gain=0.10` verification no longer applies after
   the louder AirPlay calibration.
 
@@ -162,7 +162,7 @@ FiiO KA11 → 3.5mm AUX → Aura Studio 3 (AUX-IN)
 - **SSH Access**: Username `Panda`, password `040720` (see RASPBERRY_PI_CREDENTIALS.md)
 
 ### Volume Safety
-- Initial PipeWire volume: **0.01** (post-calibration start level)
+- Initial PipeWire volume: **1.00** (post-calibration start level)
 - **NOT** real-time protection — monitor audio carefully during first tests
 - Keep Aura Studio 3 physical volume **LOW** until confirmed stable
 

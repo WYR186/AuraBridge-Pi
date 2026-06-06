@@ -33,7 +33,7 @@ Shairport Sync (native PipeWire)     librespot / DLNA (PulseAudio API)
 The 2026-06-06 hardware recovery verified the Safe Sink path on the real Pi4:
 `aurabridge_safe_sink` is the default sink and its downstream sink is the FiiO
 KA11. The AirPlay loudness calibration uses fixed gain `1.30` with initial
-volume `0.01`; Android/DLNA must stay treated as unverified after this gain
+volume `1.00`; Android/DLNA must stay treated as unverified after this gain
 change. Clients still never touch ALSA directly.
 
 > **Mixing vs. barge-in.** PipeWire **mixes** sources by default — two protocols

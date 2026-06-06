@@ -99,7 +99,7 @@ physical button. See [docs/hardware.md](docs/hardware.md).
 - The **FiiO KA11 is a DAC / headphone amplifier, not a fixed-level line-out.**
   Its output can be loud. Keep the Aura Studio 3 physical volume **low** and the
   source device volume **low** for the first tests.
-- `scripts/safe-volume.sh` sets the PipeWire default sink to **0.01** and
+- `scripts/safe-volume.sh` sets the PipeWire default sink to **1.00** and
   unmutes it. This is **initialization only**, *not* real-time protection.
 - `scripts/volume-guard-loop.sh` is **recovery, audit, and diagnostics only**.
   Polling **does not** prevent sudden volume spikes and **does not** make DLNA

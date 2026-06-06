@@ -20,5 +20,5 @@ Type=oneshot
 # --once: single check-and-clamp pass, then exit. The timer re-runs it.
 ExecStart=%h/AuraBridge-Pi/scripts/volume-guard-loop.sh --once
 # Tunables (defaults shown); polling is recovery only, never a safety guarantee.
-Environment=SAFE_VOLUME=0.01
+Environment=SAFE_VOLUME=1.00
 Environment=MAX_VOLUME=1.30

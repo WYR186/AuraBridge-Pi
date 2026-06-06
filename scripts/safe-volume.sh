@@ -7,7 +7,7 @@ set -euo pipefail
 # protection. It runs once and does not watch for or block volume spikes.
 # See docs/volume-safety.md.
 
-SAFE_VOLUME="${SAFE_VOLUME:-0.01}"
+SAFE_VOLUME="${SAFE_VOLUME:-1.00}"
 
 log()  { printf '[safe-volume] %s\n' "$*"; }
 warn() { printf '[safe-volume][WARN] %s\n' "$*" >&2; }

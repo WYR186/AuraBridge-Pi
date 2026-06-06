@@ -14,11 +14,11 @@ set -euo pipefail
 #   --once         perform a single check and exit (used by the systemd timer)
 #
 # Env vars:
-#   SAFE_VOLUME     value to clamp back to        (default 0.01)
+#   SAFE_VOLUME     value to clamp back to        (default 1.00)
 #   MAX_VOLUME      threshold that triggers clamp (default 1.30)
 #   GUARD_INTERVAL  seconds between checks         (default 5)
 
-SAFE_VOLUME="${SAFE_VOLUME:-0.01}"
+SAFE_VOLUME="${SAFE_VOLUME:-1.00}"
 MAX_VOLUME="${MAX_VOLUME:-1.30}"
 GUARD_INTERVAL="${GUARD_INTERVAL:-5}"
 
@@ -40,9 +40,9 @@ if ! command -v wpctl >/dev/null 2>&1; then
   exit 1
 fi
 
-# Read the default sink volume as a decimal (e.g. 0.01). Empty on failure.
+# Read the default sink volume as a decimal (e.g. 1.00). Empty on failure.
 read_volume() {
-  # 'wpctl get-volume @DEFAULT_AUDIO_SINK@' -> "Volume: 0.01" or "Volume: 0.01 [MUTED]"
+  # 'wpctl get-volume @DEFAULT_AUDIO_SINK@' -> "Volume: 1.00" or "Volume: 1.00 [MUTED]"
   wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null \
     | awk '/[Vv]olume:/ { print $2; exit }'
 }

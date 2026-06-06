@@ -14,10 +14,10 @@ convenience setting.
 ## The four hard facts
 
 1. **`safe-volume.sh` is initialization only.** It sets the PipeWire default
-   sink to `0.01` and unmutes it. It runs once. It is *not* a limiter and does
+   sink to `1.00` and unmutes it. It runs once. It is *not* a limiter and does
    *not* watch for spikes.
 2. **`volume-guard-loop.sh` is recovery / audit / diagnostics only.** It polls
-   the default sink volume and clamps it back toward `0.01` if it exceeds
+   the default sink volume and clamps it back toward `1.00` if it exceeds
    `1.30`. Because it polls (default every 5 s), a malicious or careless client
    that sets 100% can still be loud for the seconds between checks.
 3. **Bash polling is not real-time speaker protection.** Do not describe it as
@@ -53,7 +53,7 @@ volumes low — not because polling makes them safe. Untrusted/automatic clients
 
 | Setting | Value |
 | --- | --- |
-| Initial PipeWire default sink volume | 1% (`safe-volume.sh` uses 0.01) |
+| Initial PipeWire default sink volume | 100% (`safe-volume.sh` uses 1.00) |
 | Maximum normal testing volume | 130% after the AirPlay loudness calibration |
 | Aura Studio 3 physical volume | low |
 | Phone / source device volume | low |
@@ -63,7 +63,7 @@ volumes low — not because polling makes them safe. Untrusted/automatic clients
 ## The required safe-volume commands
 
 ```bash
-wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.01
+wpctl set-volume @DEFAULT_AUDIO_SINK@ 1.00
 wpctl set-mute   @DEFAULT_AUDIO_SINK@ 0
 ```
 

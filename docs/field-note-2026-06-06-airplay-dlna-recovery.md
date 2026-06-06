@@ -27,7 +27,7 @@ DLNA name: Aura Studio 3 DLNA
 Default sink: aurabridge_safe_sink
 Safe Sink downstream: alsa_output.usb-FIIO_FIIO_KA11-01.analog-stereo
 Safe Sink gain: 1.30 after AirPlay loudness recalibration
-Initial sink volume: 0.01
+Initial sink volume: 1.00
 Old marker: SAFE_SINK_VERIFIED=yes, gain=0.10 (no longer valid for DLNA after recalibration)
 ```
 
@@ -151,8 +151,8 @@ Safe Sink verified: NO until re-verified at this gain
 ```
 
 The original `gain=0.10` was too quiet even at high AirPlay volume. The AirPlay
-loudness calibration raises the fixed gain to `1.30` and lowers the initial
-volume to `0.01` so the first playback after service changes starts quietly.
+loudness calibration raises the fixed gain to `1.30` and keeps the default sink
+at `1.00`; setting the default sink to `0.01` made AirPlay effectively silent.
 
 ## Arbiter trap
 
@@ -249,7 +249,7 @@ This version should be described as:
 ```text
 AirPlay works end-to-end on Aura Studio 3.
 Android / DLNA phone casting is not yet usable.
-AirPlay loudness calibration is gain=1.30, initial volume=0.01.
+AirPlay loudness calibration is gain=1.30, initial volume=1.00.
 ```
 
 ## Do not regress these choices

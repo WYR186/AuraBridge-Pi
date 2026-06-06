@@ -38,7 +38,7 @@ Manual checks after Phase 1:
 - [ ] `wireplumber-version-check.sh` told you 0.4 (Lua) vs 0.5+ (SPA-JSON). **Record it.**
 - [ ] `check-ka11.sh` prints **PASS** (KA11 in `lsusb`, `aplay -l`, and as a
       PipeWire sink). If FAIL → fix hardware, see [hardware.md](hardware.md).
-- [ ] `safe-volume.sh` set the default sink to 0.01 and unmuted it.
+- [ ] `safe-volume.sh` set the default sink to 1.00 and unmuted it.
 - [ ] **Plug in the AUX, turn the Aura Studio 3 volume LOW**, and play a short
       quiet test (e.g. `pw-play /usr/share/sounds/alsa/Front_Center.wav`).
       Confirm sound through the KA11. Raise volume slowly during bring-up.

@@ -81,7 +81,7 @@ Set via the Shairport Sync config (`general.name`) by the install script.
 ./scripts/setup-base.sh        # build tools, avahi, etc. (Phase 1)
 ./scripts/setup-pipewire.sh    # PipeWire + pipewire-pulse (Phase 1)
 ./scripts/check-ka11.sh        # KA11 must PASS
-./scripts/safe-volume.sh       # 0.01, unmuted, BEFORE testing
+./scripts/safe-volume.sh       # 1.00, unmuted, BEFORE testing
 ./scripts/install-airplay2.sh  # NQPTP + Shairport Sync
 ```
 
@@ -111,7 +111,7 @@ USB DAC path. Keep these choices unless there is a deliberate migration:
 - The default sink is `aurabridge_safe_sink`.
 - The Safe Sink downstream is the KA11 sink.
 - The AirPlay loudness calibration uses Safe Sink gain `1.30` and initial
-  volume `0.01`; the old `0.10` gain was too quiet for normal use.
+  volume `1.00`; the old `0.10` gain was too quiet for normal use.
 - The optional source arbiter is not required for basic AirPlay playback. It must
   never disconnect AirPlay: AirPlay pause stays opt-in (off by default) and uses
   D-Bus `RemoteControl.Pause`, never `Stop`.

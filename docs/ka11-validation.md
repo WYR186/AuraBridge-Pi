@@ -60,7 +60,7 @@ PipeWire sink name    : <alsa_output.usb-FiiO_KA11-...>
 
 ## After a PASS
 
-1. `./scripts/safe-volume.sh` — set default sink to 0.01 and unmute.
+1. `./scripts/safe-volume.sh` — set default sink to 1.00 and unmute.
 2. Keep the Aura Studio 3 physical volume low.
 3. Play a short, quiet test (e.g. `pw-play /usr/share/sounds/alsa/Front_Center.wav`
    if available). Confirm sound comes out of the speaker via the KA11.

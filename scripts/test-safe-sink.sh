@@ -126,7 +126,7 @@ out "    KA11 is not the default sink. OK."
 # --- 3. Controlled-path audio at SAFE volume ---------------------------------
 hr; out "3) Low-volume audio through the controlled path"
 if [[ -x "$SCRIPT_DIR/safe-volume.sh" ]]; then "$SCRIPT_DIR/safe-volume.sh" >>"$TESTLOG" 2>&1 || true; fi
-out "    Default sink set to safe initial volume (~0.01). Playing a short test..."
+out "    Default sink set to calibrated initial volume (~1.00). Playing a short test..."
 play_test
 THROUGH="$(ask_ynq "Did you hear the test through the KA11 -> Aura Studio 3?")"
 out "    -> audio through controlled path = ${THROUGH}"
@@ -142,8 +142,8 @@ if [[ -t 0 ]] && have wpctl; then
     play_test
     DANGER="$(ask_ynq "At 100% Safe Sink volume, was the analog output DANGEROUSLY loud?")"
     # Restore safe level no matter what.
-    wpctl set-volume "$SINK_NODE_NAME" 0.01 2>>"$TESTLOG" || true
-    out "    Restored ${SINK_NODE_NAME} to 0.01."
+    wpctl set-volume "$SINK_NODE_NAME" 1.00 2>>"$TESTLOG" || true
+    out "    Restored ${SINK_NODE_NAME} to 1.00."
   else
     out "    100% test skipped -> danger stays 'unknown' (cannot verify)."
   fi
