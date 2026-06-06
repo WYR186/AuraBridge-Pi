@@ -72,7 +72,7 @@ physical button. See [docs/hardware.md](docs/hardware.md).
   apply a safe initial volume; status & logs tooling. *No WirePlumber policy is
   written.*
 - **Phase 2** — Build & install NQPTP and Shairport Sync with **AirPlay 2 +
-  the PulseAudio backend through `pipewire-pulse`**. Device name:
+  the native PipeWire backend**. Device name:
   `Aura Studio 3 AirPlay`.
 - **Phase 3** — Install **librespot** for Spotify Connect through
   `pipewire-pulse` / PipeWire. Device name: `Aura Studio 3 Spotify`.
@@ -135,6 +135,10 @@ physical button. See [docs/hardware.md](docs/hardware.md).
 # Phase 3 (Spotify Connect)
 ./scripts/install-spotify.sh
 
+# Optional: barge-in arbiter (install only by default; validate before enabling)
+./scripts/install-arbiter.sh
+# ./scripts/install-arbiter.sh --enable
+
 # Phase 4-6 are gated; start only after Phase 0-3 are validated on the Pi.
 ./scripts/setup-bluetooth.sh
 ./scripts/bt-pairing-window.sh
@@ -166,6 +170,7 @@ Phase 4–6 are covered in [docs/runbook-phase-4-6.md](docs/runbook-phase-4-6.md
 - [docs/wireplumber-versioning.md](docs/wireplumber-versioning.md) — version policy
 - [docs/airplay2.md](docs/airplay2.md) — AirPlay 2 setup & test
 - [docs/spotify.md](docs/spotify.md) — Spotify Connect setup & test
+- [docs/field-note-2026-06-06-airplay-dlna-recovery.md](docs/field-note-2026-06-06-airplay-dlna-recovery.md) — confirmed Pi4 AirPlay success; Android/DLNA not yet usable
 - [docs/pi-bringup-checklist.md](docs/pi-bringup-checklist.md) — first hardware checklist
 - [docs/first-boot-runbook.md](docs/first-boot-runbook.md) — exact first-boot command order
 - [docs/pass-fail-matrix.md](docs/pass-fail-matrix.md) — bring-up PASS/WARN/FAIL criteria
@@ -176,6 +181,7 @@ Phase 4–6 are covered in [docs/runbook-phase-4-6.md](docs/runbook-phase-4-6.md
 - [docs/bluetooth-policy.md](docs/bluetooth-policy.md) — controlled Bluetooth policy
 - [docs/safe-sink.md](docs/safe-sink.md) — Safe Sink design, verification, rollback
 - [docs/dlna.md](docs/dlna.md) — DLNA gate and safe manual procedure
+- [docs/source-arbiter.md](docs/source-arbiter.md) — barge-in arbiter: newest source wins, all protocols stay discoverable
 - [TROUBLESHOOTING.md](TROUBLESHOOTING.md) — common problems
 - [PROJECT_OVERVIEW_2_2.md](PROJECT_OVERVIEW_2_2.md) — English source of truth
 - [WHITEPAPER_2_2.md](WHITEPAPER_2_2.md) — design whitepaper

@@ -4,13 +4,14 @@
 
 - **NQPTP** — the PTP timing daemon required for AirPlay 2.
 - **Shairport Sync** — the AirPlay receiver, built with **AirPlay 2 support**
-  and the **native PipeWire backend** (`--with-pw`).
+  and the **native PipeWire backend** (`--with-pipewire` or `--with-pw`,
+  depending on the Shairport Sync version).
 
 ## Backend decision: native PipeWire (Directive 3)
 
-Shairport Sync uses the **native PipeWire backend (`--with-pw`)** and connects
-to PipeWire **directly**, *not* through `pipewire-pulse`. This removes a layer of
-IPC (Shairport → pipewire-pulse → PipeWire collapses to Shairport → PipeWire) and
+Shairport Sync uses the **native PipeWire backend** and connects to PipeWire
+**directly**, *not* through `pipewire-pulse`. This removes a layer of IPC
+(Shairport → pipewire-pulse → PipeWire collapses to Shairport → PipeWire) and
 improves precision-time-protocol (PTP) synchronisation for AirPlay 2.
 
 > Earlier phases used the PulseAudio backend through `pipewire-pulse` for
@@ -20,7 +21,7 @@ improves precision-time-protocol (PTP) synchronisation for AirPlay 2.
 > removes it).
 
 ```
-Shairport Sync (native PipeWire backend, --with-pw)
+Shairport Sync (native PipeWire backend)
         -> PipeWire (no pipewire-pulse)
         -> WirePlumber routes to the AuraBridge output
            (Safe Sink if present, else the selected sink: onboard AUX / USB DAC)
@@ -43,7 +44,7 @@ The configure line is:
 
 ```bash
 ./configure --sysconfdir=/etc \
-  --with-pw \
+  --with-pipewire \
   --with-soxr \
   --with-avahi \
   --with-ssl=openssl \
@@ -51,10 +52,20 @@ The configure line is:
   --with-airplay-2
 ```
 
-`--with-pw` requires the **`libpipewire-0.3-dev`** headers (the install adds
-them, replacing `libpulse-dev`). If `--with-pw` is not offered, the script uses
-whichever native PipeWire flag `./configure --help` reports and will **not**
-silently fall back to the PulseAudio backend.
+`--with-pipewire` / `--with-pw` requires the **`libpipewire-0.3-dev`** headers
+(the install adds them, replacing `libpulse-dev`). The script uses whichever
+native PipeWire flag `./configure --help` reports and will **not** silently fall
+back to the PulseAudio backend.
+
+The runtime config name is **not** the configure flag. In
+`/etc/shairport-sync.conf`, the backend must be:
+
+```config
+general = {
+  name = "Aura Studio 3 AirPlay";
+  output_backend = "pipewire";
+};
+```
 
 ## Device name
 
@@ -87,6 +98,24 @@ first AirPlay stream starts at a safe level.
    as a native PipeWire client routed to the AuraBridge output (Safe Sink, or
    the selected onboard/USB sink).
 5. `./scripts/status.sh` — NQPTP and Shairport Sync should report active.
+
+## Confirmed Pi4 recovery note
+
+The first confirmed real-hardware AirPlay success was recorded on 2026-06-06:
+AirPlay connected and the Aura Studio 3 produced audio through the FiiO KA11
+USB DAC path. Keep these choices unless there is a deliberate migration:
+
+- Shairport Sync uses `output_backend = "pipewire"`.
+- Shairport Sync publishes only on `wlan0`, port `7000`.
+- Avahi is constrained to IPv4 on `wlan0`.
+- The default sink is `aurabridge_safe_sink`.
+- The Safe Sink downstream is the KA11 sink.
+- The verified Safe Sink gain is `0.10`, so quiet playback is expected.
+- The optional source arbiter is not required for basic AirPlay playback and
+  must not default to protocol-level Stop.
+
+See [field-note-2026-06-06-airplay-dlna-recovery.md](field-note-2026-06-06-airplay-dlna-recovery.md)
+before changing any of the above.
 
 ## Acceptance (from the overview + Directive 3)
 

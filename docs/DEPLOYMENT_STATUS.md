@@ -1,8 +1,15 @@
 # AuraBridge Pi 2.2 - Deployment Status
 
-**Last Updated**: 2026-06-05 (2026-06-04 22:51 UTC-5)  
+**Last Updated**: 2026-06-06  
 **Deployment Version**: onboard-audio variant with dual-output support  
 **Raspberry Pi**: raspberrypanda (192.168.50.151)
+
+> **Current source of truth:** this file started as a 2026-06-05 deployment
+> snapshot. AirPlay, the FiiO KA11 path, and Safe Sink were later recovered on
+> real hardware. DLNA/gmrender has Pi-side service diagnostics, but Android
+> phone casting is not yet usable in this version. Before using any older
+> checklist below, read
+> [field-note-2026-06-06-airplay-dlna-recovery.md](field-note-2026-06-06-airplay-dlna-recovery.md).
 
 ---
 
@@ -25,14 +32,14 @@
   - `scripts/select-output.sh` — switch between outputs
   - `scripts/check-output.sh` — validate output configuration
 - **User Config**: `~/.config/aurabridge/output.conf` ✅
-  - Current setting: `AURABRIDGE_OUTPUT=onboard`
+  - Current verified setting: `AURABRIDGE_OUTPUT=usb`
 
-#### Audio Output (Current: Onboard)
-- **Status**: ✅ **PASS** (verified at ALSA and PipeWire layers)
-- **Hardware**: Raspberry Pi onboard 3.5mm AUX jack
-- **ALSA Card**: bcm2835 Headphones (card 2)
-- **PipeWire Sink**: `alsa_output.platform-bcm2835_audio.stereo-fallback`
-- **Safety Volume**: 0.30 (initial, not real-time protection)
+#### Audio Output (Current: USB KA11 through Safe Sink)
+- **Status**: ✅ **PASS** (verified on real Pi4 + Aura Studio 3)
+- **Hardware**: FiiO KA11 USB DAC → 3.5mm AUX → Aura Studio 3 AUX-IN
+- **Default Sink**: `aurabridge_safe_sink`
+- **Safe Sink Downstream**: `alsa_output.usb-FIIO_FIIO_KA11-01.analog-stereo`
+- **Verified Gain**: `0.10` (quiet by design; do not casually raise)
 
 #### Spotify Connect (Phase 3)
 - **librespot**: v0.8.0 ✅ (compiled with pulseaudio-backend, rustls-tls-webpki-roots)
@@ -47,15 +54,18 @@
 
 ### ⚠️ Known Issues & To-Do
 
-#### AirPlay 2 (Phase 2) - Partial Install
-- **Status**: ❌ Service failed (shairport-sync cannot start)
-- **Issue**: Audio backend not configured (missing PulseAudio integration)
+#### AirPlay 2 (Phase 2)
+- **Status**: ✅ Working on real Pi4 as of 2026-06-06
+- **Backend**: Native PipeWire (`output_backend = "pipewire"`)
+- **Discovery**: Avahi / Shairport constrained to `wlan0` IPv4
+- **Output**: `aurabridge_safe_sink` → FiiO KA11 → Aura Studio 3 AUX
 - **Components Installed**:
   - NQPTP (Precision Time Protocol) ✅
   - Shairport-sync (binary compiled) ✅
   - systemd service file ✅
-- **Next Steps**: Configure shairport-sync to use pipewire-pulse backend
-- **Device Name**: Would be "Aura Studio 3 AirPlay" (not yet functional)
+- **Do Not Regress**: Do not switch Shairport Sync back to PulseAudio just to
+  debug one symptom.
+- **Device Name**: "Aura Studio 3 AirPlay"
 
 ---
 
@@ -67,56 +77,65 @@
 | WirePlumber | User | **active** | Policy & session manager |
 | PipeWire-Pulse | User | **active** | PulseAudio compatibility |
 | librespot | User | **active** ✅ | Spotify Connect |
-| shairport-sync | System | **failed** | Audio backend issue |
+| shairport-sync | System | **active** ✅ | AirPlay 2, native PipeWire |
+| nqptp | System | **active** ✅ | AirPlay 2 timing |
 | avahi-daemon | System | **active** | mDNS/DNS-SD support |
+| gmrender | User | **active** ⚠️ | Pi-side DLNA renderer only; Android casting not yet usable |
 
 ---
 
 ## 🎯 Current Capabilities
 
 ### ✅ Working Now
-1. **Spotify Connect** via Spotify app (iOS/macOS/Android)
+1. **AirPlay 2** via iPhone/Mac
+   - Device appears as "Aura Studio 3 AirPlay"
+   - Audio confirmed from Aura Studio 3 on 2026-06-06
+   - Native PipeWire backend
+   - Published on `wlan0` IPv4, port `7000`
+
+2. **Spotify Connect** via Spotify app (iOS/macOS/Android)
    - Device appears as "AuraStudio3Spotify" in Spotify
    - First connection requires OAuth authorization
-   - Audio output through Raspberry Pi 3.5mm jack → Aura Studio 3 AUX-IN
-   - Volume: initial 0.30 (safe level)
+   - Audio output through PipeWire/Safe Sink to KA11
 
-2. **Output Selection** (Preparation for FiiO KA11)
-   - Current: `onboard` (tree-raspberry Pi 3.5mm)
-   - When FiiO KA11 arrives: switch to `usb` mode with one command
+3. **Output Selection**
+   - Current verified path: `usb` (FiiO KA11)
    - Auto mode: automatically detects and switches between outputs
 
-### ❌ Not Yet Working
-1. **AirPlay 2** (shairport-sync) — audio backend configuration needed
-2. **Bluetooth A2DP** (Phase 4 — not yet attempted)
-3. **DLNA** (Phase 6 — gated behind Safe Sink verification)
+### ⚠️ Still Separate / Not Core
+1. **Android / DLNA phone casting** — not yet usable in this version. gmrender
+   may be active for Pi-side diagnostics, but this is not a working Android
+   playback path.
+2. **Bluetooth A2DP** — currently separate from the AirPlay success path.
+3. **Arbiter** — optional; install-only by default; protocol-level Stop disabled
+   unless deliberately tested.
 
 ### 🎵 Audio Stack (Current Flow)
 ```
-Spotify App (iOS/Mac/Android)
+AirPlay: Shairport Sync (native PipeWire)
+Spotify/DLNA: PulseAudio API via pipewire-pulse
     ↓
-librespot (local Spotify Connect receiver)
+PipeWire graph / WirePlumber
     ↓
-PulseAudio backend
+aurabridge_safe_sink
     ↓
-PipeWire-Pulse
+alsa_output.usb-FIIO_FIIO_KA11-01.analog-stereo
     ↓
-PipeWire graph
-    ↓
-alsa_output.platform-bcm2835_audio.stereo-fallback
-    ↓
-ALSA driver (bcm2835 Headphones)
-    ↓
-3.5mm AUX jack
-    ↓
-Aura Studio 3 (AUX-IN)
+FiiO KA11 → 3.5mm AUX → Aura Studio 3 (AUX-IN)
 ```
 
 ---
 
 ## 📋 Testing Checklist (Next Steps)
 
-### Immediate (Spotify Test)
+### Immediate Regression Test
+- [ ] Open iPhone/Mac AirPlay picker
+- [ ] Look for "Aura Studio 3 AirPlay"
+- [ ] Play a test track at LOW volume
+- [ ] Verify sound comes through Aura Studio 3
+- [ ] Run `./scripts/status.sh` and compare with the 2026-06-06 field note
+
+### Spotify Test
 - [ ] Open Spotify app on iPhone/Mac
 - [ ] Look for "AuraStudio3Spotify" in available devices
 - [ ] If first connection: complete OAuth authorization (follow on-screen prompts)
@@ -124,17 +143,11 @@ Aura Studio 3 (AUX-IN)
 - [ ] Verify sound comes through Aura Studio 3
 - [ ] Check Aura Studio 3 physical volume is low
 
-### When FiiO KA11 Arrives
-- [ ] Connect FiiO KA11 via USB-A → Type-C adapter
+### KA11 / Safe Sink Check
 - [ ] Run: `./scripts/check-output.sh` (should detect USB)
-- [ ] Run: `./scripts/select-output.sh usb` (switch to USB output)
-- [ ] Re-run: `./scripts/check-output.sh` (verify USB is now default sink)
-- [ ] Re-test Spotify with FiiO KA11 connected
-
-### AirPlay 2 Repair (Optional)
-- [ ] Edit `/etc/shairport-sync.conf` to use PulseAudio backend
-- [ ] Test with: `systemctl restart shairport-sync`
-- [ ] Look for "Aura Studio 3 AirPlay" on iPhone/Mac
+- [ ] Run: `./scripts/status.sh`
+- [ ] Confirm default sink is `aurabridge_safe_sink`
+- [ ] Confirm Safe Sink downstream is the KA11 sink
 
 ---
 

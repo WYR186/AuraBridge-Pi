@@ -101,7 +101,7 @@ pactl list short sinks | grep -i "usb\|fiio\|meizu"
 
 ---
 
-## When FiiO KA11 Arrives
+## When Reconnecting or Replacing the FiiO KA11
 
 ### Setup Steps
 
@@ -126,8 +126,10 @@ pactl list short sinks | grep -i "usb\|fiio\|meizu"
    # Should show: FiiO KA11 is default sink
    ```
 
-5. **Test Spotify again**
-   - Audio now flows through FiiO KA11 → 3.5mm → Aura Studio 3
+5. **Test playback again**
+   - AirPlay should appear as "Aura Studio 3 AirPlay" and play through the KA11.
+   - Spotify should appear as "AuraStudio3Spotify" and play through the KA11.
+   - Audio now flows through FiiO KA11 → 3.5mm → Aura Studio 3.
 
 ---
 

@@ -1,0 +1,19 @@
+# AuraBridge Safe Sink boot refresh.
+#
+# USB DACs may enumerate after the user PipeWire graph starts. This oneshot
+# waits for the selected output and reapplies the Safe Sink filter-chain so the
+# virtual sink's playback side lands on the intended physical device.
+
+[Unit]
+Description=AuraBridge Safe Sink boot refresh
+Documentation=file:%h/AuraBridge-Pi/docs/safe-sink.md
+After=pipewire.service pipewire-pulse.service wireplumber.service
+Wants=pipewire-pulse.service wireplumber.service
+
+[Service]
+Type=oneshot
+ExecStart=%h/AuraBridge-Pi/scripts/refresh-safe-sink.sh
+TimeoutStartSec=90
+
+[Install]
+WantedBy=default.target

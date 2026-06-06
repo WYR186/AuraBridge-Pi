@@ -9,12 +9,58 @@ HINTS='fiio|ka11|usb audio|usb-audio|\bdac\b|headphone'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/output-target.sh
 . "$SCRIPT_DIR/lib/output-target.sh"
+# shellcheck source=lib/arbiter-lib.sh
+if [[ -r "$SCRIPT_DIR/lib/arbiter-lib.sh" ]]; then
+  . "$SCRIPT_DIR/lib/arbiter-lib.sh"
+fi
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 SS_MARKER="$REPO_ROOT/logs/safe-sink-verified.txt"
 
 have() { command -v "$1" >/dev/null 2>&1; }
 
-safe_sink_verified() { [[ -f "$SS_MARKER" ]] && grep -q '^SAFE_SINK_VERIFIED=yes' "$SS_MARKER"; }
+safe_sink_marker_gain() {
+  [[ -r "$SS_MARKER" ]] || return 0
+  sed -nE 's/^gain=([0-9]+([.][0-9]+)?).*/\1/p' "$SS_MARKER" 2>/dev/null | tail -n1
+}
+
+safe_sink_current_gain() {
+  local conf="${HOME}/.config/pipewire/pipewire.conf.d/99-aurabridge-safe-sink.conf"
+  [[ -r "$conf" ]] || return 0
+  sed -nE 's/.*"mult"[[:space:]]*=[[:space:]]*([0-9]+([.][0-9]+)?).*/\1/p' "$conf" 2>/dev/null | head -n1
+}
+
+safe_sink_gain_matches_marker() {
+  local marker_gain current_gain
+  marker_gain="$(safe_sink_marker_gain)"
+  current_gain="$(safe_sink_current_gain)"
+  [[ -z "$marker_gain" || -z "$current_gain" || "$marker_gain" == "$current_gain" ]]
+}
+
+safe_sink_verified() {
+  [[ -f "$SS_MARKER" ]] && grep -q '^SAFE_SINK_VERIFIED=yes' "$SS_MARKER" && safe_sink_gain_matches_marker
+}
+
+sink_name_by_id() {
+  local id="$1"
+  [[ -n "$id" ]] || return 0
+  pactl list sinks short 2>/dev/null | awk -v id="$id" '$1 == id {print $2; exit}'
+}
+
+safe_sink_downstream() {
+  have pactl || return 0
+  pactl list sink-inputs 2>/dev/null | awk '
+    /^Sink Input #/ { in_input = 1; sink = ""; safe = 0; next }
+    in_input && /^[[:space:]]*Sink:/ { sink = $2; next }
+    in_input && /node.name = "aurabridge_safe_sink.output"/ { safe = 1; next }
+    in_input && /^$/ {
+      if (safe && sink != "") { print sink; exit }
+      in_input = 0; sink = ""; safe = 0
+    }
+    END {
+      if (safe && sink != "") print sink
+    }
+  '
+}
 
 # Report a unit's active state, or "not installed" if no fragment exists.
 report_service() {
@@ -91,10 +137,31 @@ report_service "NQPTP:"                    system nqptp.service
 report_service "Spotify (librespot, user):" user librespot.service
 
 echo
-echo "[ Phase 4 — Bluetooth (MVP Plus) ]"
+echo "[ Source arbiter (barge-in) ]"
+report_service "Arbiter (user):" user aurabridge-arbiter.service
+if have pactl; then
+  if declare -F arb_managed_inputs >/dev/null 2>&1; then
+    managed="$(arb_managed_inputs 2>/dev/null || true)"
+  else
+    managed=""
+  fi
+  if [[ -z "$managed" ]]; then
+    total=0; playing=0
+  else
+    total="$(printf '%s\n' "$managed" | grep -c '|')"
+    playing="$(printf '%s\n' "$managed" | grep -c '|no|')"
+  fi
+  printf '  %-26s %s\n' "Wireless streams (total):" "$total"
+  printf '  %-26s %s\n' "Currently playing:" "$playing"
+fi
+printf '  %-26s %s\n' "(policy:)" "newest source wins; all protocols stay discoverable"
 report_service "bluetooth.service:" system bluetooth.service
 if have bluetoothctl; then
-  bt_show="$(bluetoothctl show 2>/dev/null || true)"
+  if have timeout; then
+    bt_show="$(timeout 4 bluetoothctl show 2>/dev/null || true)"
+  else
+    bt_show="$(bluetoothctl show 2>/dev/null || true)"
+  fi
   printf '  %-26s %s\n' "BT alias:"        "$(printf '%s\n' "$bt_show" | sed -nE 's/.*Alias: (.*)$/\1/p' | head -n1)"
   printf '  %-26s %s\n' "BT discoverable:" "$(printf '%s\n' "$bt_show" | sed -nE 's/.*Discoverable: (yes|no).*/\1/p' | head -n1)"
   printf '  %-26s %s\n' "BT pairable:"     "$(printf '%s\n' "$bt_show" | sed -nE 's/.*Pairable: (yes|no).*/\1/p' | head -n1)"
@@ -104,20 +171,46 @@ fi
 
 echo
 echo "[ Phase 5 — Safe Sink (real-time safety) ]"
+ss_current_gain="$(safe_sink_current_gain || true)"
+ss_marker_gain="$(safe_sink_marker_gain || true)"
 if have pactl && pactl list sinks short 2>/dev/null | grep -q 'aurabridge_safe_sink'; then
   printf '  %-26s %s\n' "Safe Sink node:" "present (aurabridge_safe_sink)"
+  ss_sink_id="$(safe_sink_downstream || true)"
+  ss_sink_name="$(sink_name_by_id "$ss_sink_id" || true)"
+  if [[ -n "$ss_sink_name" ]]; then
+    expected_sink="$(detect_output_sink 2>/dev/null || true)"
+    printf '  %-26s %s\n' "Safe Sink downstream:" "$ss_sink_name"
+    if [[ -n "$expected_sink" && "$ss_sink_name" != "$expected_sink" ]]; then
+      printf '  %-26s %s\n' "Safe Sink warning:" "expected ${expected_sink}"
+    fi
+  else
+    printf '  %-26s %s\n' "Safe Sink downstream:" "unknown/inactive"
+  fi
 else
   printf '  %-26s %s\n' "Safe Sink node:" "not present"
+fi
+printf '  %-26s %s\n' "Safe Sink gain:" "${ss_current_gain:-unknown}"
+if [[ -n "$ss_marker_gain" ]]; then
+  printf '  %-26s %s\n' "Verified marker gain:" "$ss_marker_gain"
 fi
 if safe_sink_verified; then
   printf '  %-26s %s\n' "Safe Sink verified:" "YES"
 else
-  printf '  %-26s %s\n' "Safe Sink verified:" "NO (DLNA stays blocked)"
+  if [[ -n "$ss_marker_gain" && -n "$ss_current_gain" && "$ss_marker_gain" != "$ss_current_gain" ]]; then
+    printf '  %-26s %s\n' "Safe Sink verified:" "NO (gain mismatch; DLNA stays blocked)"
+  else
+    printf '  %-26s %s\n' "Safe Sink verified:" "NO (DLNA stays blocked)"
+  fi
 fi
 
 echo
 echo "[ Phase 6 — DLNA (gated; off by default) ]"
 report_service "DLNA (gmrender, user):" user gmrender.service
+if have ss && ss -lun 2>/dev/null | grep -q ':1900'; then
+  printf '  %-26s %s\n' "DLNA SSDP:" "listening on UDP 1900"
+else
+  printf '  %-26s %s\n' "DLNA SSDP:" "not listening"
+fi
 if safe_sink_verified; then
   printf '  %-26s %s\n' "DLNA gate:" "unlockable (Safe Sink verified) — manual start only"
 else

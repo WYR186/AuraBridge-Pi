@@ -85,8 +85,8 @@ Minimal output focusing on critical systems.
 |--------|---------|---------|
 | ✅ | OK / Running | `✅ Network connected` |
 | ❌ | Failed / Problem | `❌ System issues detected` |
-| ⚠️ | Warning | `⚠️ AirPlay not running` |
-| ℹ️ | Info / Note | `ℹ️ Current output mode: onboard` |
+| ⚠️ | Warning | `⚠️ Bluetooth not running` |
+| ℹ️ | Info / Note | `ℹ️ Current output mode: usb` |
 | ⏳ | Pending / In progress | (not commonly shown) |
 
 ### Health Score
@@ -131,28 +131,32 @@ The **Quick Summary** shows a score like:
 ═══ Output Configuration (Dual-Output Layer) ═══
 ► Configured Output
 ✅ Configuration found
-  Mode:                               onboard
+  Mode:                               usb
 ► Effective Output
-✅ Onboard audio (3.5mm) is active
+✅ USB DAC output is active
 
 ═══ PipeWire Sinks (Audio Outputs) ═══
 ► Available Sinks
-ℹ️ Sink 71: alsa_output.platform-bcm2835_audio.stereo-fallback (48000Hz)
+ℹ️ Sink 71: aurabridge_safe_sink (48000Hz)
+ℹ️ Sink 72: alsa_output.usb-FIIO_FIIO_KA11-01.analog-stereo (48000Hz)
 ► Default Sink Volume
-  Volume: front-left: 19661 / 30% / -31.37 dB
+  Volume: 1.00
 
 ═══ AuraBridge Services ═══
 ► Spotify (Phase 3)
   librespot:  active
 ✅ Running (PID 31457)
 ► AirPlay 2 (Phase 2)
-  shairport-sync: failed
-⚠️ Not running (audio backend issue)
+  shairport-sync: active
+✅ Running
+► DLNA (Phase 6)
+  gmrender: active
+✅ Running
 
 ═══ Quick Summary ═══
 ✅ All systems nominal (8/8) — Ready for playback!
 ═════════════════════════════════════════════════════════════
-ℹ️ Current output mode: onboard
+ℹ️ Current output mode: usb
    To switch: ./scripts/select-output.sh [onboard|usb|auto]
 ```
 
@@ -169,7 +173,9 @@ System is fully operational and ready for audio playback.
 Most things work, but something needs attention.
 
 **Common issues:**
-- **AirPlay not running?** This is expected — it needs PulseAudio backend configuration (optional, not critical)
+- **AirPlay not running?** Not expected after the 2026-06-06 recovery. Check
+  `avahi-daemon`, `nqptp`, `shairport-sync`, and the native PipeWire backend
+  config in [airplay2.md](airplay2.md).
 - **Network unavailable?** Check Ethernet/Wi-Fi connection
 - **Output unknown?** Try `./scripts/check-output.sh` for detailed audio debugging
 

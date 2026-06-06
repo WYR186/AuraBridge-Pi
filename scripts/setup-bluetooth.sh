@@ -123,7 +123,7 @@ emit_policy_lua() {
 -- 1) Pin the AuraBridge output sink as the highest-priority session default so a
 --    Bluetooth A2DP connection can never steal the active route from AirPlay or
 --    Spotify. Applies to the ALSA-backed sink (onboard AUX or USB DAC).
-if rawget(_G, "alsa_monitor") ~= nil then
+if alsa_monitor ~= nil then
   alsa_monitor.rules = alsa_monitor.rules or {}
   table.insert(alsa_monitor.rules, {
     matches = {
@@ -139,7 +139,7 @@ end
 
 -- 2) Force Bluetooth A2DP *source* nodes (phone -> Pi) to render into the
 --    AuraBridge output, and forbid switch-on-connect / becoming the default.
-if rawget(_G, "bluez_monitor") ~= nil then
+if bluez_monitor ~= nil then
   bluez_monitor.rules = bluez_monitor.rules or {}
   table.insert(bluez_monitor.rules, {
     matches = {

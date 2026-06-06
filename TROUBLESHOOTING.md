@@ -53,9 +53,37 @@ Symptoms: `check-ka11.sh` reports FAIL; KA11 missing from `lsusb` / `aplay -l` /
   `./scripts/logs.sh`.
 - Avahi/mDNS must work: `systemctl status avahi-daemon`. AirPlay discovery is
   mDNS-based — the Pi and the phone must be on the same L2 network/VLAN.
-- Confirm Shairport Sync was built with the **PulseAudio backend** and
-  `pipewire-pulse` is up. The native PipeWire backend is intentionally not the
-  MVP default; see [docs/airplay2.md](docs/airplay2.md).
+- The confirmed Pi4 recovery constrains AirPlay/mDNS to `wlan0` IPv4 to avoid
+  stale multi-interface Bonjour records. Check `avahi-browse -rt _raop._tcp`
+  and confirm it shows `wlan0 IPv4`, `address = [192.168.50.151]`, and
+  `port = [7000]`.
+- Confirm Shairport Sync is using the **native PipeWire backend**:
+  `/etc/shairport-sync.conf` should contain `output_backend = "pipewire";`.
+  See [docs/airplay2.md](docs/airplay2.md) and
+  [docs/field-note-2026-06-06-airplay-dlna-recovery.md](docs/field-note-2026-06-06-airplay-dlna-recovery.md).
+
+## AirPlay appears, connects, but no sound
+
+- Run `./scripts/status.sh`. The known-good state is `Default sink:
+  aurabridge_safe_sink`, `Safe Sink downstream:
+  alsa_output.usb-FIIO_FIIO_KA11-01.analog-stereo`, and `Safe Sink verified:
+  YES`.
+- Reset any stale arbiter mute state: `./scripts/source-arbiter.sh --reset`.
+  The arbiter is optional and should be disabled unless being tested.
+- Check the AirPlay stream and routing: `wpctl status`, `pactl list sinks short`,
+  and `pactl list sink-inputs`.
+- Check recent logs: `journalctl -u shairport-sync -n 80 --no-pager` and
+  `journalctl --user -u pipewire -u wireplumber -n 80 --no-pager`.
+- If the KA11 was unplugged, moved, or power-cycled, check USB audio errors:
+  `dmesg | grep -iE 'usb|fiio|ka11|snd_usb|No such device' | tail -n 80`.
+  `No such device` / `Unable to submit urb` means physical USB/DAC disconnect,
+  not an AirPlay protocol failure.
+
+## AirPlay works but is quiet
+
+The 2026-06-06 verified Safe Sink gain is `0.10`, so quiet output is expected.
+Raise volume cautiously from the source and Aura Studio 3 first. Do not casually
+increase the Safe Sink gain; it is part of the verified safety state.
 
 ## "Device or resource busy" / ALSA locking
 
@@ -109,6 +137,18 @@ That is the safe default. `./scripts/install-dlna.sh` refuses unless
 `logs/safe-sink-verified.txt` contains `SAFE_SINK_VERIFIED=yes`, written by
 `./scripts/test-safe-sink.sh` after the real-time path and 100% volume behavior
 are confirmed safe. The volume guard does **not** satisfy this gate.
+
+## DLNA service is active but the phone does not see it
+
+- Run `./scripts/check-dlna-discovery.sh`.
+- gmrender is intentionally bound to `wlan0`; `127.0.0.1:49494` may fail.
+  Probe the Wi-Fi address instead:
+  `curl -fsS http://192.168.50.151:49494/description.xml`.
+- Confirm UDP 1900 and TCP 49494:
+  `ss -ltnup | grep -E ':(1900|49494)'`.
+- If the Pi checks pass but the phone still cannot see it, suspect router/AP
+  multicast handling: same subnet, no guest Wi-Fi isolation, AP/client isolation
+  off, and IGMP/multicast filtering allowing SSDP `239.255.255.250`.
 
 ## A gated future-risk script exited non-zero
 

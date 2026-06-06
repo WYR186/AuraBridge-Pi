@@ -50,19 +50,22 @@ Do **not** modify any WirePlumber policy. See
 
 ```bash
 ./scripts/safe-volume.sh           # re-assert safe level before testing
-./scripts/install-airplay2.sh      # NQPTP + Shairport Sync (PulseAudio backend)
+./scripts/install-airplay2.sh      # NQPTP + Shairport Sync (native PipeWire backend)
 ```
 
 Manual checks:
 
-- [ ] The script ran `./configure --help | grep -i pulse` / `... airplay` and
-      built with the PulseAudio backend + AirPlay 2 (not native PipeWire).
+- [ ] The script inspected `./configure --help` for PipeWire / AirPlay flags and
+      built with the native PipeWire backend + AirPlay 2.
 - [ ] `systemctl status nqptp` → active.
 - [ ] `systemctl status shairport-sync` → active (it may be a system unit from
       `--with-systemd-startup`).
 - [ ] On an iPhone/Mac on the same network, **"Aura Studio 3 AirPlay"** appears.
-- [ ] Play audio at low volume; confirm sound; `pactl list sink-inputs` shows the
-      stream on the KA11 sink; no `Device or resource busy`.
+- [ ] Play audio at low volume; confirm sound; `wpctl status` / `pw-cli ls Node`
+      shows Shairport Sync as a native PipeWire client; no `Device or resource
+      busy`.
+- [ ] If recovering the known Pi4 setup, compare against
+      [field-note-2026-06-06-airplay-dlna-recovery.md](field-note-2026-06-06-airplay-dlna-recovery.md).
 
 See [airplay2.md](airplay2.md). How to test AirPlay is the bullet list above.
 

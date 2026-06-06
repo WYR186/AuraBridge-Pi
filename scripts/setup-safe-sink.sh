@@ -39,6 +39,15 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$SCRIPT_DIR/lib/output-target.sh"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 LOG_DIR="$REPO_ROOT/logs"
+SS_MARKER="$LOG_DIR/safe-sink-verified.txt"
+
+verified_marker_gain() {
+  [[ -r "$SS_MARKER" ]] || return 0
+  grep -q '^SAFE_SINK_VERIFIED=yes' "$SS_MARKER" 2>/dev/null || return 0
+  sed -nE 's/^gain=([0-9]+([.][0-9]+)?).*/\1/p' "$SS_MARKER" 2>/dev/null | tail -n1
+}
+
+SAFE_SINK_GAIN="${SAFE_SINK_GAIN:-$(verified_marker_gain)}"
 SAFE_SINK_GAIN="${SAFE_SINK_GAIN:-0.40}"
 SINK_NODE_NAME="aurabridge_safe_sink"
 SINK_DESC="AuraBridge Safe Sink"
@@ -47,6 +56,7 @@ PW_CONF_DIR="${HOME}/.config/pipewire/pipewire.conf.d"
 CONF_NAME="99-aurabridge-safe-sink.conf"
 CONF_PATH="${PW_CONF_DIR}/${CONF_NAME}"
 CONF_DISABLED="${CONF_PATH}.disabled"
+BOOT_REFRESH_UNIT="aurabridge-safe-sink-refresh.service"
 
 log()  { printf '[safe-sink] %s\n' "$*"; }
 warn() { printf '[safe-sink][WARN] %s\n' "$*" >&2; }
@@ -201,6 +211,21 @@ restart_pw() {
     || warn "Could not restart the user PipeWire stack via systemd."
 }
 
+install_boot_refresh_unit() {
+  [[ "${AURABRIDGE_SAFE_SINK_SKIP_ENABLE:-0}" == "1" ]] && return 0
+  local unit_src="$REPO_ROOT/systemd/${BOOT_REFRESH_UNIT}"
+  local unit_dst="${HOME}/.config/systemd/user/${BOOT_REFRESH_UNIT}"
+  [[ -f "$unit_src" ]] || { warn "Boot refresh unit missing from repo: ${unit_src}"; return 0; }
+  mkdir -p "$(dirname "$unit_dst")"
+  install -m 0644 "$unit_src" "$unit_dst"
+  systemctl --user daemon-reload 2>/dev/null || warn "Could not reload user systemd after installing ${BOOT_REFRESH_UNIT}."
+  if systemctl --user enable "$BOOT_REFRESH_UNIT" >/dev/null 2>&1; then
+    log "Enabled boot refresh unit: ${BOOT_REFRESH_UNIT}"
+  else
+    warn "Could not enable ${BOOT_REFRESH_UNIT}. Run manually: systemctl --user enable ${BOOT_REFRESH_UNIT}"
+  fi
+}
+
 cmd_apply() {
   have pipewire || die "PipeWire is not installed. Run ./scripts/setup-pipewire.sh first."
   have pactl    || die "pactl not available. Install pulseaudio-utils (setup-pipewire.sh)."
@@ -261,9 +286,19 @@ cmd_apply() {
     "$SCRIPT_DIR/safe-volume.sh" || warn "safe-volume.sh reported an issue (continuing)."
   fi
 
+  install_boot_refresh_unit
+
   echo
-  log "Safe Sink applied (fixed-gain ${SAFE_SINK_GAIN}). This is INSTALLED but NOT VERIFIED."
-  warn "Real-time audio safety layer NOT verified. DLNA must remain disabled."
+  local marker_gain; marker_gain="$(verified_marker_gain)"
+  if [[ -n "$marker_gain" && "$marker_gain" == "$SAFE_SINK_GAIN" ]]; then
+    log "Safe Sink applied (fixed-gain ${SAFE_SINK_GAIN}). Existing verification marker matches this gain."
+  elif [[ -n "$marker_gain" ]]; then
+    log "Safe Sink applied (fixed-gain ${SAFE_SINK_GAIN})."
+    warn "Existing verification marker is for gain ${marker_gain}, not ${SAFE_SINK_GAIN}; re-verify before treating DLNA as safe."
+  else
+    log "Safe Sink applied (fixed-gain ${SAFE_SINK_GAIN}). This is INSTALLED but NOT VERIFIED."
+    warn "Real-time audio safety layer NOT verified. DLNA must remain disabled."
+  fi
   log "Verify on the Pi now:   ./scripts/test-safe-sink.sh"
   log "Roll back at any time:  ./scripts/setup-safe-sink.sh --rollback"
 }
