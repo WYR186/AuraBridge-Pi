@@ -1,22 +1,26 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
-# bind-safe-sink-output.sh — make the AuraBridge Safe Sink's OUTPUT land on the
+# bind-safe-sink-output.sh — keep the AuraBridge Safe Sink's OUTPUT on the
 # selected physical output (e.g. the FiiO KA11 USB DAC) instead of the Pi onboard
 # 3.5mm jack.
 #
-# WHY THIS EXISTS (the "AirPlay connects but no sound after reboot" bug):
-# A USB DAC enumerates a few seconds AFTER the user PipeWire graph starts. The
-# Safe Sink filter-chain (target.object = the KA11) therefore loads before the
-# KA11 exists, so PipeWire binds its playback side to whatever sink is available
-# (the onboard bcm2835 jack). It never moves to the KA11 when it appears, so
-# audio goes to the Pi's headphone jack — the speaker is silent even though
-# AirPlay "connected". See docs/field-note-2026-06-06-reboot-no-sound.md.
+# WHY THIS EXISTS (the "AirPlay connects but no sound" bug):
+# The Safe Sink filter-chain's playback side is a PASSIVE node with
+# target.object = the KA11. In WirePlumber 0.4 that target is NOT reliably
+# honored: the passive output parks on the highest-priority physical sink, which
+# is the Pi onboard 3.5mm jack, so audio goes there and the speaker (on the KA11)
+# is silent. A one-shot move at boot does not hold because the node drifts back to
+# onboard while idle. See docs/field-note-2026-06-06-reboot-no-sound.md.
 #
-# This is the LIGHT fix: wait for the selected sink, then MOVE the Safe Sink
-# output sink-input onto it (idempotent, no PipeWire restart). If the Safe Sink
-# itself is missing, fall back to the heavier refresh-safe-sink.sh (full reapply).
-# Runs at boot via aurabridge-safe-sink-refresh.service (user).
+# Modes:
+#   --watch   (used by aurabridge-safe-sink-refresh.service) do an initial bind,
+#             then watch and re-assert the binding WHENEVER the Safe Sink is
+#             actually playing. It does nothing while idle, so it never fights
+#             WirePlumber's idle parking (no churn) — it only guarantees that
+#             when audio flows, it flows to the KA11.
+#   --once    bind once now and exit (manual use). Falls back to
+#             refresh-safe-sink.sh if the Safe Sink itself is missing.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/output-target.sh
@@ -38,54 +42,91 @@ fi
 
 have pactl || { warn "pactl not available; cannot rebind."; exit 0; }
 
-# Wait for the selected physical output sink (KA11 by name) to appear.
-target_name=""
-for ((i = 0; i <= WAIT_SECS; i++)); do
-  target_name="$(detect_output_sink 2>/dev/null || true)"
-  [[ -n "$target_name" ]] && break
-  (( i == WAIT_SECS )) && break
-  sleep 1
-done
+# Numeric id of the selected physical output sink (KA11 by name), or empty.
+target_sink_id() {
+  local name; name="$(detect_output_sink 2>/dev/null || true)"
+  [[ -z "$name" ]] && return 1
+  pactl list sinks short 2>/dev/null | awk -v n="$name" '$2==n{print $1; exit}'
+}
 
-if [[ -z "$target_name" ]]; then
-  warn "Selected output sink did not appear within ${WAIT_SECS}s; leaving routing as-is."
-  exit 0
-fi
-log "Selected output sink present: ${target_name}"
+# sink-input id of the Safe Sink's playback stream ("<safe>.output"), or empty.
+safe_out_id() {
+  pactl list sink-inputs 2>/dev/null \
+    | awk -v want="${SINK_NODE_NAME}.output" \
+        '/^Sink Input #/{id=$3; sub(/#/,"",id)} index($0,want){print id; exit}'
+}
 
-# Numeric id of the target sink.
-target_id="$(pactl list sinks short 2>/dev/null | awk -v n="$target_name" '$2==n{print $1; exit}')"
-if [[ -z "$target_id" ]]; then
-  warn "Could not resolve numeric id for ${target_name}; leaving routing as-is."
-  exit 0
-fi
+# Numeric sink id the Safe Sink output is currently routed to, or empty.
+safe_out_sink() {
+  pactl list sink-inputs 2>/dev/null \
+    | awk -v want="${SINK_NODE_NAME}.output" \
+        '/^Sink Input #/{s=""} /^[[:space:]]*Sink:/{s=$2} index($0,want){print s; exit}'
+}
 
-# The Safe Sink's playback stream ("<safe>.output"). If it is missing the Safe
-# Sink filter-chain is not loaded — fall back to the full reapply.
-safe_out_id="$(pactl list sink-inputs 2>/dev/null \
-  | awk -v want="${SINK_NODE_NAME}.output" \
-      '/Sink Input #/{id=$3; sub(/#/,"",id)} index($0,want){print id; exit}')"
+# True if the Safe Sink itself is actively playing (audio is flowing).
+safe_sink_running() {
+  local st
+  st="$(pactl list sinks short 2>/dev/null | awk -v n="$SINK_NODE_NAME" '$2==n{print $NF; exit}')"
+  [[ "$st" == "RUNNING" ]]
+}
 
-if [[ -z "$safe_out_id" ]]; then
-  warn "Safe Sink output stream not found. Falling back to refresh-safe-sink.sh."
-  if [[ -x "$SCRIPT_DIR/refresh-safe-sink.sh" ]]; then
-    exec "$SCRIPT_DIR/refresh-safe-sink.sh"
+# Ensure the Safe Sink output is on the target (KA11). Idempotent: only moves
+# when it is not already there, so there is nothing to churn.
+ensure_bound() {
+  local tid soid cur
+  tid="$(target_sink_id)" || return 1
+  [[ -z "$tid" ]] && return 1
+  soid="$(safe_out_id)"; [[ -z "$soid" ]] && return 1
+  pactl set-default-sink "$SINK_NODE_NAME" >/dev/null 2>&1 || true
+  pactl set-sink-mute "$tid" 0 >/dev/null 2>&1 || true
+  cur="$(safe_out_sink)"
+  if [[ "$cur" != "$tid" ]]; then
+    if pactl move-sink-input "$soid" "$tid" >/dev/null 2>&1; then
+      log "Safe Sink output (#${soid}) re-bound: sink ${cur:-?} -> ${tid} (selected DAC)."
+    fi
+  fi
+  return 0
+}
+
+wait_for_target() {
+  local i
+  for ((i = 0; i <= WAIT_SECS; i++)); do
+    [[ -n "$(target_sink_id 2>/dev/null || true)" ]] && return 0
+    (( i == WAIT_SECS )) && return 1
+    sleep 1
+  done
+  return 1
+}
+
+run_once() {
+  if ! wait_for_target; then
+    warn "Selected output sink did not appear within ${WAIT_SECS}s; leaving routing as-is."
+    exit 0
+  fi
+  if ! ensure_bound; then
+    warn "Safe Sink output not found; falling back to refresh-safe-sink.sh."
+    [[ -x "$SCRIPT_DIR/refresh-safe-sink.sh" ]] && exec "$SCRIPT_DIR/refresh-safe-sink.sh"
   fi
   exit 0
-fi
+}
 
-# Make the Safe Sink the default sink, route its output to the target, unmute it.
-# All idempotent — safe to run repeatedly / every boot.
-pactl set-default-sink "$SINK_NODE_NAME" >/dev/null 2>&1 || true
-pactl set-sink-mute "$target_id" 0 >/dev/null 2>&1 || true
-if pactl move-sink-input "$safe_out_id" "$target_id" >/dev/null 2>&1; then
-  log "Safe Sink output (#${safe_out_id}) -> ${target_name} (#${target_id})."
-else
-  warn "move-sink-input failed (already there?). Current routing:"
-fi
+run_watch() {
+  wait_for_target || warn "Selected output sink not present yet; will bind when it appears."
+  ensure_bound || true
+  log "Watching: will keep the Safe Sink output on the selected DAC whenever audio plays."
+  # Re-assert only while the Safe Sink is actually playing -> no idle churn.
+  local ev
+  pactl subscribe 2>/dev/null | while read -r ev; do
+    case "$ev" in
+      *sink*) safe_sink_running && ensure_bound || true ;;
+    esac
+  done
+  warn "pactl subscribe ended; exiting for restart."
+  exit 1
+}
 
-# Report final routing for the journal.
-pactl list sink-inputs 2>/dev/null \
-  | awk '/Sink Input #/{h=$0} index($0,"'"${SINK_NODE_NAME}"'.output"){print h; found=1} /Sink:/{if(found){print "  "$0; found=0}}' \
-  | sed 's/^/[safe-sink-bind] /' || true
-exit 0
+case "${1:-}" in
+  --watch) run_watch ;;
+  ""|--once) run_once ;;
+  *) printf 'usage: %s [--watch|--once]\n' "$(basename "$0")" >&2; exit 2 ;;
+esac

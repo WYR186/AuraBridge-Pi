@@ -21,10 +21,13 @@ After=pipewire.service pipewire-pulse.service wireplumber.service
 Wants=pipewire-pulse.service wireplumber.service
 
 [Service]
-Type=oneshot
-RemainAfterExit=yes
-ExecStart=%h/AuraBridge-Pi/scripts/bind-safe-sink-output.sh
-TimeoutStartSec=90
+# Long-running watcher: initial bind, then re-assert the Safe Sink output onto the
+# selected DAC (KA11) whenever audio is actually playing. Idle does nothing, so it
+# does not fight WirePlumber's idle parking.
+Type=simple
+ExecStart=%h/AuraBridge-Pi/scripts/bind-safe-sink-output.sh --watch
+Restart=on-failure
+RestartSec=5
 
 [Install]
 WantedBy=default.target

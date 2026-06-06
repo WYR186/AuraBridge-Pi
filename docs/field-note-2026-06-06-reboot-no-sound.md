@@ -28,10 +28,17 @@ heavy reapply does not reliably honor `target.object` across the restart (the sa
 late-enumeration race recurs). **A forced move is required.**
 
 **Permanent fix:** [`scripts/bind-safe-sink-output.sh`](../scripts/bind-safe-sink-output.sh)
-— waits for the selected sink (KA11) to appear, then **moves** the
-`aurabridge_safe_sink.output` sink-input onto it (`pactl move-sink-input`),
-idempotently, with no PipeWire restart. `aurabridge-safe-sink-refresh.service`
-(user) now runs this at boot instead of the heavy reapply.
+`--watch` — does an initial bind, then **re-asserts the binding whenever the Safe
+Sink is actually playing** (idempotent `pactl move-sink-input`, no PipeWire
+restart). A one-shot bind at boot is NOT enough: the passive output drifts back to
+onboard while idle, and `target.object = KA11` is not honored by WirePlumber 0.4.
+The watcher does nothing while idle (so it never fights WirePlumber's idle
+parking) and only guarantees that *when audio flows, it flows to the KA11*.
+`aurabridge-safe-sink-refresh.service` (user, long-running) runs `--watch`.
+
+If churn or a cleaner fix is ever wanted, the alternative is a WirePlumber rule
+giving the KA11 a higher `priority.session` than the onboard sink (a
+`~/.config/wireplumber/main.lua.d/*.lua` rule, like the existing BT policy file).
 
 **Manual recovery (any time it's silent):**
 ```bash
