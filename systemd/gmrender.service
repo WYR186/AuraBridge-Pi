@@ -25,7 +25,14 @@ Wants=pipewire-pulse.service
 ExecStartPre=/bin/sh -c 'grep -q "^SAFE_SINK_VERIFIED=yes" "%h/AuraBridge-Pi/logs/safe-sink-verified.txt"'
 # Route through pipewire-pulse to the verified Safe Sink (NOT ALSA hardware).
 Environment=PULSE_SINK=aurabridge_safe_sink
-ExecStart=/usr/bin/gmediarender --friendly-name "Aura Studio 3 DLNA" --gstout-audiosink pulsesink
+# Stable identity: AURABRIDGE_DLNA_UUID is generated once and persisted by
+# install-dlna.sh so control points recognise the SAME renderer across reboots.
+# The unit fails loudly if it is missing (run install-dlna.sh first).
+EnvironmentFile=%h/.config/aurabridge/dlna-uuid
+# --uuid keeps the device identity stable; --port pins the HTTP/SOAP port (SSDP
+# discovery itself is multicast UDP 1900) so it is predictable for firewall rules
+# and for check-dlna-discovery.sh.
+ExecStart=/usr/bin/gmediarender --friendly-name "Aura Studio 3 DLNA" --gstout-audiosink pulsesink --uuid ${AURABRIDGE_DLNA_UUID} --port 49494
 Restart=on-failure
 RestartSec=5
 

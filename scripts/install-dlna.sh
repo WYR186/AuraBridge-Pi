@@ -21,6 +21,12 @@ MARKER="$REPO_ROOT/logs/safe-sink-verified.txt"
 USER_UNIT_DIR="$HOME/.config/systemd/user"
 DLNA_NAME="${DLNA_NAME:-Aura Studio 3 DLNA}"
 SAFE_SINK_NODE="aurabridge_safe_sink"
+# Stable identity for the renderer: a UUID persisted under ~/.config/aurabridge so
+# control points (BubbleUPnP / Hi-Fi Cast / ...) keep recognising the SAME device
+# across reboots instead of re-discovering a "new" one each time. gmrender.service
+# loads this file via EnvironmentFile and passes it as --uuid.
+UUID_DIR="$HOME/.config/aurabridge"
+UUID_FILE="$UUID_DIR/dlna-uuid"
 
 log()  { printf '[dlna] %s\n' "$*"; }
 warn() { printf '[dlna][WARN] %s\n' "$*" >&2; }
@@ -63,6 +69,39 @@ fi
 GMR_BIN="$(command -v gmediarender || echo /usr/bin/gmediarender)"
 [[ -x "$GMR_BIN" ]] || die "gmediarender binary not found/executable at ${GMR_BIN}."
 
+# --- GStreamer codec coverage ------------------------------------------------
+# gmediarender decodes through GStreamer. The base package pulls a minimal plugin
+# set, which is NOT enough for what Xiaomi / Samsung phones actually push (AAC /
+# M4A / FLAC, sometimes OGG/ALAC). Without these the device is DISCOVERED but the
+# track fails to play. Install the broader plugin set (idempotent).
+log "Ensuring GStreamer codec plugins are present (MP3/AAC/M4A/FLAC/WAV/OGG)..."
+if ! sudo apt-get install -y \
+     gstreamer1.0-plugins-good \
+     gstreamer1.0-plugins-bad \
+     gstreamer1.0-plugins-ugly \
+     gstreamer1.0-libav; then
+  warn "Could not install the full GStreamer plugin set. Some codecs (e.g. AAC/M4A,"
+  warn "FLAC) may fail to play. Re-run with working apt sources to fix coverage."
+fi
+
+# --- Stable renderer identity (persistent UUID) ------------------------------
+mkdir -p "$UUID_DIR"
+if [[ -s "$UUID_FILE" ]] && grep -q '^AURABRIDGE_DLNA_UUID=' "$UUID_FILE"; then
+  log "Reusing existing DLNA UUID from ${UUID_FILE}."
+else
+  if have uuidgen; then
+    NEW_UUID="$(uuidgen)"
+  elif [[ -r /proc/sys/kernel/random/uuid ]]; then
+    NEW_UUID="$(cat /proc/sys/kernel/random/uuid)"
+  else
+    die "Cannot generate a UUID (no uuidgen and no /proc/sys/kernel/random/uuid).
+Install 'uuid-runtime' (sudo apt-get install -y uuid-runtime) and re-run."
+  fi
+  printf 'AURABRIDGE_DLNA_UUID=%s\n' "$NEW_UUID" > "$UUID_FILE"
+  chmod 0600 "$UUID_FILE"
+  log "Generated stable DLNA UUID -> ${UUID_FILE} (${NEW_UUID})."
+fi
+
 # --- Install the USER unit (DISABLED: no enable, no autostart) ---------------
 mkdir -p "$USER_UNIT_DIR"
 [[ -f "$REPO_ROOT/systemd/gmrender.service" ]] || die "systemd/gmrender.service missing from the repo."
@@ -90,6 +129,7 @@ cat <<EOF
 
   Start manually (foreground service):   systemctl --user start gmrender.service
   Check status:                          systemctl --user status gmrender.service
+  Verify phones can discover it:         ./scripts/check-dlna-discovery.sh
   Quick STOP:                            systemctl --user stop gmrender.service
 
 [dlna] The unit has a start-time gate: it refuses to start unless the Safe Sink
