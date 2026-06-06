@@ -5,9 +5,9 @@
 #     VERIFIED (logs/safe-sink-verified.txt contains SAFE_SINK_VERIFIED=yes,
 #     written only by test-safe-sink.sh). So the unit stays INERT until real-time
 #     audio safety is verified.
-#   - There is intentionally NO [Install] section, so it CANNOT be enabled with
-#     `systemctl --user enable` and will never autostart at boot. Start it
-#     manually: `systemctl --user start gmrender.service`.
+#   - The installer does NOT enable this service automatically. Start it
+#     manually: `systemctl --user start gmrender.service`. After verification,
+#     an operator may explicitly opt into boot autostart.
 #   - Audio routes through pipewire-pulse to the verified Safe Sink
 #     (PULSE_SINK=aurabridge_safe_sink), never directly to ALSA hw:/plughw:.
 #
@@ -23,10 +23,27 @@ Wants=pipewire-pulse.service
 [Service]
 # Hard start-time gate: do not start unless the Safe Sink is verified.
 ExecStartPre=/bin/sh -c 'grep -q "^SAFE_SINK_VERIFIED=yes" "%h/AuraBridge-Pi/logs/safe-sink-verified.txt"'
+# gmediarender can start before wlan0 has an address after a hard power cycle.
+# In that case it stays "active" but never binds SSDP UDP 1900, so phones cannot
+# discover it. Wait for a real IPv4 interface before starting.
+ExecStartPre=/bin/sh -c 'for i in $(seq 1 60); do ip -o -4 addr show up scope global | grep -q "inet " && exit 0; sleep 1; done; echo "No global IPv4 address for DLNA startup" >&2; exit 1'
 # Route through pipewire-pulse to the verified Safe Sink (NOT ALSA hardware).
 Environment=PULSE_SINK=aurabridge_safe_sink
-ExecStart=/usr/bin/gmediarender --friendly-name "Aura Studio 3 DLNA" --gstout-audiosink pulsesink
+# Stable identity: AURABRIDGE_DLNA_UUID is generated once and persisted by
+# install-dlna.sh so control points recognise the SAME renderer across reboots.
+# The unit fails loudly if it is missing (run install-dlna.sh first).
+EnvironmentFile=%h/.config/aurabridge/dlna-uuid
+# --uuid keeps the device identity stable; --port pins the HTTP/SOAP port (SSDP
+# discovery itself is multicast UDP 1900) so it is predictable for firewall rules
+# and for check-dlna-discovery.sh.
+ExecStart=/usr/bin/gmediarender --interface-name wlan0 --friendly-name "Aura Studio 3 DLNA" --gstout-audiosink pulsesink --uuid ${AURABRIDGE_DLNA_UUID} --port 49494
+# Treat "process is active but SSDP did not bind" as a failed start so systemd
+# restarts it instead of leaving a non-discoverable renderer running.
+ExecStartPost=/bin/sh -c 'for i in $(seq 1 20); do ss -lun 2>/dev/null | grep -q ":1900" && exit 0; sleep 1; done; echo "gmediarender did not bind SSDP UDP 1900" >&2; exit 1'
 Restart=on-failure
 RestartSec=5
 
-# No [Install] section ON PURPOSE: this unit must not be enabled / autostarted.
+# The installer does not enable this unit. Keep [Install] so a verified system
+# can explicitly opt into autostart without hand-editing the unit.
+[Install]
+WantedBy=default.target

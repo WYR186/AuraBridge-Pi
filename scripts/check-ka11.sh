@@ -9,7 +9,7 @@ set -euo pipefail
 # detected as a USB audio device at all). See docs/ka11-validation.md.
 
 # Case-insensitive hints used to recognize the KA11 / a USB DAC.
-HINTS='fiio|ka11|usb audio|usb-audio|\bdac\b|headphone|usb dac'
+HINTS='fiio|ka11|meizu|usb audio|usb-audio|\bdac\b|headphone|usb dac'
 
 have() { command -v "$1" >/dev/null 2>&1; }
 section() { printf '\n===== %s =====\n' "$*"; }

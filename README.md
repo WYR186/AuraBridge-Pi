@@ -9,6 +9,11 @@ and sends it out through a **FiiO KA11 Type-C USB DAC** over a 3.5 mm AUX cable
 into the Aura Studio 3. The speaker is never opened or modified — the Pi is an
 external bridge.
 
+> **Output is selectable.** Before the USB dongle arrives you can run the same
+> stack out of the Pi's built-in 3.5 mm AUX jack, then switch to the KA11 with a
+> single command — see [docs/onboard-audio.md](docs/onboard-audio.md). Pick the
+> output with `./scripts/select-output.sh onboard|usb|auto`.
+
 > **Current validation status:** Phase 0–3 are implemented, and Phase 4–6 now
 > have conservative scripts and documentation. This checkout was updated on a
 > development Mac, **not** on the actual Raspberry Pi, so Phase 4–6 are
@@ -67,7 +72,7 @@ physical button. See [docs/hardware.md](docs/hardware.md).
   apply a safe initial volume; status & logs tooling. *No WirePlumber policy is
   written.*
 - **Phase 2** — Build & install NQPTP and Shairport Sync with **AirPlay 2 +
-  the PulseAudio backend through `pipewire-pulse`**. Device name:
+  the native PipeWire backend**. Device name:
   `Aura Studio 3 AirPlay`.
 - **Phase 3** — Install **librespot** for Spotify Connect through
   `pipewire-pulse` / PipeWire. Device name: `Aura Studio 3 Spotify`.
@@ -112,7 +117,16 @@ physical button. See [docs/hardware.md](docs/hardware.md).
 ./scripts/setup-base.sh
 ./scripts/setup-pipewire.sh
 ./scripts/wireplumber-version-check.sh
-./scripts/check-ka11.sh
+
+# --- Choose the audio output --------------------------------------------------
+# No USB dongle yet? Use the Pi's built-in 3.5 mm AUX jack:
+./scripts/setup-onboard-audio.sh        # enables the jack (may need one reboot)
+./scripts/select-output.sh onboard
+# Have the FiiO KA11 USB dongle (小尾巴)? Use it instead (or 'auto'):
+# ./scripts/select-output.sh usb
+# -----------------------------------------------------------------------------
+
+./scripts/check-output.sh               # validates whichever output is selected
 ./scripts/safe-volume.sh
 
 # Phase 2 (AirPlay 2)
@@ -120,6 +134,10 @@ physical button. See [docs/hardware.md](docs/hardware.md).
 
 # Phase 3 (Spotify Connect)
 ./scripts/install-spotify.sh
+
+# Optional: barge-in arbiter (install only by default; validate before enabling)
+./scripts/install-arbiter.sh
+# ./scripts/install-arbiter.sh --enable
 
 # Phase 4-6 are gated; start only after Phase 0-3 are validated on the Pi.
 ./scripts/setup-bluetooth.sh
@@ -142,13 +160,17 @@ Phase 4–6 are covered in [docs/runbook-phase-4-6.md](docs/runbook-phase-4-6.md
 
 ## Documentation
 
+- [docs/RASPBERRY_PI_SETUP.md](docs/RASPBERRY_PI_SETUP.md) — Pi connection info & headless mode setup ⭐ **Start here**
+- [docs/RASPBERRY_PI_CREDENTIALS.md](docs/RASPBERRY_PI_CREDENTIALS.md) — SSH credentials & system info (secured)
 - [docs/hardware.md](docs/hardware.md) — hardware and wiring
+- [docs/onboard-audio.md](docs/onboard-audio.md) — onboard 3.5 mm AUX output & switching to the USB dongle
 - [docs/ka11-validation.md](docs/ka11-validation.md) — KA11 detection & mixer
 - [docs/audio-routing.md](docs/audio-routing.md) — PipeWire routing model
 - [docs/volume-safety.md](docs/volume-safety.md) — the volume safety rules
 - [docs/wireplumber-versioning.md](docs/wireplumber-versioning.md) — version policy
 - [docs/airplay2.md](docs/airplay2.md) — AirPlay 2 setup & test
 - [docs/spotify.md](docs/spotify.md) — Spotify Connect setup & test
+- [docs/field-note-2026-06-06-airplay-dlna-recovery.md](docs/field-note-2026-06-06-airplay-dlna-recovery.md) — confirmed Pi4 AirPlay success; Android/DLNA not yet usable
 - [docs/pi-bringup-checklist.md](docs/pi-bringup-checklist.md) — first hardware checklist
 - [docs/first-boot-runbook.md](docs/first-boot-runbook.md) — exact first-boot command order
 - [docs/pass-fail-matrix.md](docs/pass-fail-matrix.md) — bring-up PASS/WARN/FAIL criteria
@@ -159,6 +181,7 @@ Phase 4–6 are covered in [docs/runbook-phase-4-6.md](docs/runbook-phase-4-6.md
 - [docs/bluetooth-policy.md](docs/bluetooth-policy.md) — controlled Bluetooth policy
 - [docs/safe-sink.md](docs/safe-sink.md) — Safe Sink design, verification, rollback
 - [docs/dlna.md](docs/dlna.md) — DLNA gate and safe manual procedure
+- [docs/source-arbiter.md](docs/source-arbiter.md) — barge-in arbiter: newest source wins, all protocols stay discoverable
 - [TROUBLESHOOTING.md](TROUBLESHOOTING.md) — common problems
 - [PROJECT_OVERVIEW_2_2.md](PROJECT_OVERVIEW_2_2.md) — English source of truth
 - [WHITEPAPER_2_2.md](WHITEPAPER_2_2.md) — design whitepaper

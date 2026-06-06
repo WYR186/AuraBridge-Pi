@@ -2,9 +2,11 @@
 
 > **Status: implemented as scripts, NOT yet validated on real hardware.** The
 > Phase 4 scripts (`setup-bluetooth.sh`, `bt-pairing-window.sh`,
-> `bluetooth-routing-spike.sh`) exist and pass static checks, but they have
-> **not** been run on the Raspberry Pi with a phone and the Aura Studio 3. Treat
-> routing behaviour as **unverified** until the routing spike is run on the Pi.
+> `bluetooth-routing-spike.sh`) exist and pass static checks. As of **Directive
+> 2**, `setup-bluetooth.sh` now also writes a **version-matched WirePlumber
+> anti-hijack policy** (see "Implemented policy" below). Nothing here has been run
+> on the Raspberry Pi with a phone and the Aura Studio 3 yet, so treat routing
+> behaviour as **unverified** until the routing spike confirms it on the Pi.
 
 ## Where Bluetooth sits
 
@@ -78,10 +80,49 @@ Check the version first with `./scripts/wireplumber-version-check.sh`. Do **not*
 copy "latest docs" examples onto a mismatched install. See
 [wireplumber-versioning.md](wireplumber-versioning.md).
 
-**Gate:** the routing spike proposes a version-matched mitigation but does
-**not** apply it. Writing Bluetooth WirePlumber policy requires an explicit,
-separate approval and must follow the documentation contract (version, config
-dir, syntax, files changed, reason, rollback).
+**Gate (now satisfied by Directive 2):** the routing spike proposes a
+version-matched mitigation but does **not** apply it. Writing Bluetooth
+WirePlumber policy required an explicit, separate approval — **Directive 2 is
+that approval.** `setup-bluetooth.sh` now applies the policy below, following the
+documentation contract (version, config dir, syntax, files changed, reason,
+rollback).
+
+## Implemented policy (Directive 2)
+
+`setup-bluetooth.sh` runs `wireplumber --version` **first** and writes the
+matching config (it never copies one model onto the other):
+
+| WirePlumber | Syntax | File written |
+| --- | --- | --- |
+| 0.4.x | Lua | `~/.config/wireplumber/main.lua.d/51-aurabridge-bt-policy.lua` |
+| 0.5.x+ | SPA-JSON | `~/.config/wireplumber/wireplumber.conf.d/51-aurabridge-bt-policy.conf` |
+
+What the policy does:
+
+1. **Pins the AuraBridge output sink as the highest-priority session default**
+   (`node.priority = priority.session = 10000`) so a phone connecting over A2DP
+   cannot steal the active route from AirPlay / Spotify.
+2. **Routes Bluetooth A2DP source nodes** (`media.class = "Audio/Source"`,
+   `device.api = "bluez5"`) into that sink via `target.node`, and sets
+   `node.dont-reconnect = true` to defeat switch-on-connect.
+
+**Target node — resolved, not hardcoded to KA11.** The pinned/target node is
+chosen at apply time: the **Safe Sink** (`aurabridge_safe_sink`) if present,
+otherwise the currently selected physical output (onboard AUX now, USB DAC later)
+via `scripts/lib/output-target.sh`. Override with `TARGET_NODE=<node.name>`
+(alias `KA11_NODE_NAME`). This honours the project rule of never hardcoding a
+device — the Pi currently runs on onboard audio, not the KA11.
+
+**Reason:** prevent A2DP from hijacking the active output; keep AirPlay / Spotify
+as the primary route.
+
+**Rollback:** `./scripts/setup-bluetooth.sh --rollback-policy` (moves the file to
+`*.removed.<ts>` and restarts WirePlumber). `--no-policy` enables the adapter
+without writing any policy.
+
+**Still required:** prove it on the Pi. With AirPlay or Spotify playing, connect a
+phone and confirm with `wpctl status` that the default sink does **not** move and
+that the A2DP stream routes *into* it. See `bluetooth-routing-spike.sh`.
 
 ## Fallback strategy
 

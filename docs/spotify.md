@@ -23,6 +23,17 @@ card directly — that reintroduces device-locking conflicts with AirPlay.
 Aura Studio 3 Spotify
 ```
 
+The librespot binary must include a zeroconf discovery feature. The install
+script builds it with:
+
+```bash
+--no-default-features --features pulseaudio-backend,with-avahi,native-tls
+```
+
+The user service starts it with `--zeroconf-backend avahi`, so Spotify apps on
+the same network can discover **Aura Studio 3 Spotify** without running a second
+mDNS responder that could conflict with `avahi-daemon`.
+
 ## Service model
 
 This build installs librespot as a **user** systemd service

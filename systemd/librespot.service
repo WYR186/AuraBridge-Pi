@@ -14,7 +14,7 @@ After=pipewire.service pipewire-pulse.service wireplumber.service
 Wants=pipewire-pulse.service
 
 [Service]
-ExecStart=%h/.local/bin/librespot --name "Aura Studio 3 Spotify" --backend pulseaudio --initial-volume 30
+ExecStart=%h/.local/bin/librespot --name "Aura Studio 3 Spotify" --backend pulseaudio --zeroconf-backend avahi --initial-volume 30
 Restart=on-failure
 RestartSec=5
 

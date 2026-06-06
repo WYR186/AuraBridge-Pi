@@ -1,0 +1,29 @@
+# AuraBridge source arbiter (barge-in) — Phase 7 "中控修正".
+#
+# USER service: it must share the user pipewire-pulse session to see every
+# wireless source's sink-input. install-arbiter.sh installs it by default; use
+# --enable only after validating behaviour on the real Pi/router.
+#
+# It implements barge-in (newest wireless source wins the speaker) at the
+# PLAYBACK plane only. It never touches discovery, so AirPlay / Spotify / DLNA
+# stay visible at the same time. It NEVER raises volume. By default it only
+# mutes displaced sources locally; protocol-level Stop is opt-in.
+# See docs/source-arbiter.md and docs/volume-safety.md.
+
+[Unit]
+Description=AuraBridge source arbiter (barge-in: newest wireless source wins playback)
+Documentation=file:%h/AuraBridge-Pi/docs/source-arbiter.md
+After=pipewire.service pipewire-pulse.service wireplumber.service
+Wants=pipewire-pulse.service
+
+[Service]
+Environment=AURABRIDGE_ARBITER_PROTOCOL_STOP=0
+ExecStart=%h/AuraBridge-Pi/scripts/source-arbiter.sh --run
+# Belt-and-suspenders: if we are killed without running the SIGTERM trap, make
+# sure no source is left muted.
+ExecStopPost=%h/AuraBridge-Pi/scripts/source-arbiter.sh --reset
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target
