@@ -7,7 +7,7 @@ set -euo pipefail
 # protection. It runs once and does not watch for or block volume spikes.
 # See docs/volume-safety.md.
 
-SAFE_VOLUME="${SAFE_VOLUME:-0.30}"
+SAFE_VOLUME="${SAFE_VOLUME:-0.01}"
 
 log()  { printf '[safe-volume] %s\n' "$*"; }
 warn() { printf '[safe-volume][WARN] %s\n' "$*" >&2; }
@@ -31,4 +31,4 @@ wpctl set-mute @DEFAULT_AUDIO_SINK@ 0 || warn "Could not unmute default sink."
 log "Done. Default sink volume is now ${SAFE_VOLUME} (unmuted)."
 echo
 echo "WARNING: This is only initial volume setup. It is not real-time speaker protection."
-echo "Keep the Aura Studio 3 physical volume LOW during tests. Do not exceed 0.45 during bring-up."
+echo "Keep the Aura Studio 3 physical volume LOW during tests. Raise volume slowly."

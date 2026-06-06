@@ -61,7 +61,7 @@ ssh Panda@raspberrypanda.local
 ## Audio System Status
 
 **Default Sink**: `alsa_output.platform-bcm2835_audio.stereo-fallback`
-**Default Volume**: 0.30 (safe initial level)
+**Default Volume**: 0.01 (post-calibration initial level)
 **Onboard Audio**: bcm2835 Headphones (3.5mm AUX output)
 
 ---

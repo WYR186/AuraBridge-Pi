@@ -76,7 +76,7 @@ stage points at the dongle's sink rather than the onboard one.
   dongle.
 - The onboard jack is closer to line level than the KA11's headphone-amp output,
   so it is *less* likely to be dangerously loud — but the safety model is
-  unchanged: `safe-volume.sh` still sets `0.30` first, and you should still keep
+  unchanged: `safe-volume.sh` still sets `0.01` first, and you should still keep
   the Aura Studio 3 physical volume low during the first test. See
   [volume-safety.md](volume-safety.md).
 - The Safe Sink / DLNA gate is **independent of which output you pick**. DLNA

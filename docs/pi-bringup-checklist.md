@@ -84,7 +84,7 @@ Remember: this is only initialization. It is not real-time speaker protection.
 
 - [ ] Confirm Aura Studio 3 physical volume is still LOW.
 - [ ] Play a short, quiet test only after KA11 validation and `safe-volume.sh`.
-- [ ] Do not exceed 45% during bring-up.
+- [ ] Raise volume slowly during bring-up.
 
 ## 5. AirPlay Install And Test
 

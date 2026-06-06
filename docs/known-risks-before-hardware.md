@@ -67,7 +67,7 @@ Mitigation:
 - Keep Aura Studio 3 physical volume low.
 - Run `./scripts/safe-volume.sh` before playback.
 - Keep source volume low.
-- Do not exceed 45% during bring-up.
+- Raise volume slowly during bring-up.
 
 `safe-volume.sh` is initialization only. `volume-guard-loop.sh` is recovery and
 diagnostics only. Neither is real-time speaker protection.

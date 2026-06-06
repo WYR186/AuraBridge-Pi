@@ -21,7 +21,7 @@ Symptoms: `check-ka11.sh` reports FAIL; KA11 missing from `lsusb` / `aplay -l` /
 
 ## No sound, but KA11 is detected
 
-- `./scripts/safe-volume.sh` — ensures the default sink is unmuted and at 0.30.
+- `./scripts/safe-volume.sh` — ensures the default sink is unmuted and at 0.01.
 - `wpctl status` — confirm the KA11 is the **default** sink (marked with `*`).
   If not: `wpctl set-default <ID>` using the KA11 node ID from `wpctl status`.
 - Confirm the AUX cable is fully seated in the Aura Studio 3 **AUX-IN** and the
@@ -81,9 +81,10 @@ Symptoms: `check-ka11.sh` reports FAIL; KA11 missing from `lsusb` / `aplay -l` /
 
 ## AirPlay works but is quiet
 
-The 2026-06-06 verified Safe Sink gain is `0.10`, so quiet output is expected.
-Raise volume cautiously from the source and Aura Studio 3 first. Do not casually
-increase the Safe Sink gain; it is part of the verified safety state.
+The AirPlay loudness calibration uses Safe Sink gain `1.30` and initial volume
+`0.01`. Raise volume cautiously from the source and Aura Studio 3. This louder
+calibration invalidates the old `gain=0.10` DLNA safety marker; Android/DLNA
+must stay treated as not usable until re-verified at the new gain.
 
 ## "Device or resource busy" / ALSA locking
 
@@ -103,7 +104,7 @@ increase the Safe Sink gain; it is part of the verified safety state.
 ## Volume jumped loud
 
 - Turn the **Aura Studio 3 physical knob down** first, then the source device.
-- `./scripts/safe-volume.sh` resets the PipeWire default sink to 0.30.
+- `./scripts/safe-volume.sh` resets the PipeWire default sink to 0.01.
 - Remember: the volume guard only *recovers* after the fact. It is **not**
   real-time protection. This is the central 2.2 safety rule — see
   [docs/volume-safety.md](docs/volume-safety.md).

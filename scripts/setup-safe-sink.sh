@@ -31,7 +31,7 @@ set -euo pipefail
 #   --help
 #
 # Env:
-#   SAFE_SINK_GAIN   linear output gain / hard cap (default 0.40 ~= -8 dB)
+#   SAFE_SINK_GAIN   linear output gain / hard cap (default 1.30)
 #   ASSUME_YES=1     skip the interactive restart confirmation
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -40,6 +40,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 LOG_DIR="$REPO_ROOT/logs"
 SS_MARKER="$LOG_DIR/safe-sink-verified.txt"
+PW_CONF_DIR="${HOME}/.config/pipewire/pipewire.conf.d"
+CONF_NAME="99-aurabridge-safe-sink.conf"
+CONF_PATH="${PW_CONF_DIR}/${CONF_NAME}"
+CONF_DISABLED="${CONF_PATH}.disabled"
 
 verified_marker_gain() {
   [[ -r "$SS_MARKER" ]] || return 0
@@ -47,15 +51,17 @@ verified_marker_gain() {
   sed -nE 's/^gain=([0-9]+([.][0-9]+)?).*/\1/p' "$SS_MARKER" 2>/dev/null | tail -n1
 }
 
+active_config_gain() {
+  [[ -r "$CONF_PATH" ]] || return 0
+  sed -nE 's/.*"mult"[[:space:]]*=[[:space:]]*([0-9]+([.][0-9]+)?).*/\1/p' "$CONF_PATH" 2>/dev/null | head -n1
+}
+
+SAFE_SINK_GAIN="${SAFE_SINK_GAIN:-$(active_config_gain)}"
 SAFE_SINK_GAIN="${SAFE_SINK_GAIN:-$(verified_marker_gain)}"
-SAFE_SINK_GAIN="${SAFE_SINK_GAIN:-0.40}"
+SAFE_SINK_GAIN="${SAFE_SINK_GAIN:-1.30}"
 SINK_NODE_NAME="aurabridge_safe_sink"
 SINK_DESC="AuraBridge Safe Sink"
 
-PW_CONF_DIR="${HOME}/.config/pipewire/pipewire.conf.d"
-CONF_NAME="99-aurabridge-safe-sink.conf"
-CONF_PATH="${PW_CONF_DIR}/${CONF_NAME}"
-CONF_DISABLED="${CONF_PATH}.disabled"
 BOOT_REFRESH_UNIT="aurabridge-safe-sink-refresh.service"
 
 log()  { printf '[safe-sink] %s\n' "$*"; }

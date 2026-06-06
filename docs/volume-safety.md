@@ -14,11 +14,11 @@ convenience setting.
 ## The four hard facts
 
 1. **`safe-volume.sh` is initialization only.** It sets the PipeWire default
-   sink to `0.30` and unmutes it. It runs once. It is *not* a limiter and does
+   sink to `0.01` and unmutes it. It runs once. It is *not* a limiter and does
    *not* watch for spikes.
 2. **`volume-guard-loop.sh` is recovery / audit / diagnostics only.** It polls
-   the default sink volume and clamps it back toward `0.30` if it exceeds
-   `0.45`. Because it polls (default every 5 s), a malicious or careless client
+   the default sink volume and clamps it back toward `0.01` if it exceeds
+   `1.30`. Because it polls (default every 5 s), a malicious or careless client
    that sets 100% can still be loud for the seconds between checks.
 3. **Bash polling is not real-time speaker protection.** Do not describe it as
    protection. Do not rely on it. Do not use it to justify enabling risky
@@ -53,8 +53,8 @@ volumes low — not because polling makes them safe. Untrusted/automatic clients
 
 | Setting | Value |
 | --- | --- |
-| Initial PipeWire default sink volume | 20%–30% (`safe-volume.sh` uses 0.30) |
-| Maximum normal testing volume | 45% |
+| Initial PipeWire default sink volume | 1% (`safe-volume.sh` uses 0.01) |
+| Maximum normal testing volume | 130% after the AirPlay loudness calibration |
 | Aura Studio 3 physical volume | low |
 | Phone / source device volume | low |
 | DLNA | disabled |
@@ -63,7 +63,7 @@ volumes low — not because polling makes them safe. Untrusted/automatic clients
 ## The required safe-volume commands
 
 ```bash
-wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.30
+wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.01
 wpctl set-mute   @DEFAULT_AUDIO_SINK@ 0
 ```
 
@@ -87,5 +87,4 @@ the volume guard" — it is not. Implement Layer 2 first.
 1. `./scripts/check-ka11.sh` → PASS.
 2. Turn the **Aura Studio 3 physical knob low**.
 3. `./scripts/safe-volume.sh`.
-4. Play something short and quiet; raise volume slowly; never exceed 45% during
-   bring-up.
+4. Play something short and quiet; raise volume slowly.

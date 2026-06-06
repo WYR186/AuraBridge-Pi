@@ -37,7 +37,7 @@ Normal clients
 
 `setup-safe-sink.sh` builds a **PipeWire filter-chain** virtual sink named
 `AuraBridge Safe Sink` (`node.name = aurabridge_safe_sink`) using two builtin
-`linear` gain nodes (L/R) with a fixed `mult` (default `0.40`, ≈ −8 dB). Its
+`linear` gain nodes (L/R) with a fixed `mult` (default `1.30`). Its
 output targets the **dynamically detected** KA11 sink by name (never `hw:`/a card
 number). On `--apply` it sets the Safe Sink as the default sink so normal clients
 use it instead of the KA11.
@@ -69,6 +69,9 @@ Design choices made for safety:
 - PipeWire allows node volumes **above 100%** (over-amplification). The fixed
   gain still caps the result, but the exact safe ceiling must be judged on the
   real speaker — which is precisely what `test-safe-sink.sh` asks a human.
+- The AirPlay loudness calibration uses `SAFE_SINK_GAIN=1.30` because `0.10`
+  was too quiet in normal use. That is an AirPlay usability calibration, **not**
+  DLNA safety verification.
 - Whether the chosen builtin `linear` graph loads cleanly on the Pi's specific
   PipeWire version is unconfirmed (the auto-rollback exists for exactly this).
 
@@ -78,7 +81,8 @@ Design choices made for safety:
 confirming, with the Aura Studio 3 physical volume low, that audio flows through
 the controlled path **and** a 100% client volume does **not** produce dangerous
 output. Only then is `logs/safe-sink-verified.txt` written with
-`SAFE_SINK_VERIFIED=yes`.
+`SAFE_SINK_VERIFIED=yes`. Changing the Safe Sink gain invalidates any previous
+marker.
 
 ## Does DLNA remain blocked?
 

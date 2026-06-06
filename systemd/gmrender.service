@@ -21,8 +21,9 @@ After=pipewire.service pipewire-pulse.service wireplumber.service
 Wants=pipewire-pulse.service
 
 [Service]
-# Hard start-time gate: do not start unless the Safe Sink is verified.
-ExecStartPre=/bin/sh -c 'grep -q "^SAFE_SINK_VERIFIED=yes" "%h/AuraBridge-Pi/logs/safe-sink-verified.txt"'
+# Hard start-time gate: do not start unless the Safe Sink is verified for the
+# currently active fixed gain.
+ExecStartPre=%h/AuraBridge-Pi/scripts/check-safe-sink-gate.sh
 # gmediarender can start before wlan0 has an address after a hard power cycle.
 # In that case it stays "active" but never binds SSDP UDP 1900, so phones cannot
 # discover it. Wait for a real IPv4 interface before starting.

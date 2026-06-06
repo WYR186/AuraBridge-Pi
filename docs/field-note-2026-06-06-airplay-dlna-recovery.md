@@ -26,8 +26,9 @@ AirPlay name: Aura Studio 3 AirPlay
 DLNA name: Aura Studio 3 DLNA
 Default sink: aurabridge_safe_sink
 Safe Sink downstream: alsa_output.usb-FIIO_FIIO_KA11-01.analog-stereo
-Safe Sink gain: 0.10
-Safe Sink verified marker: SAFE_SINK_VERIFIED=yes, gain=0.10
+Safe Sink gain: 1.30 after AirPlay loudness recalibration
+Initial sink volume: 0.01
+Old marker: SAFE_SINK_VERIFIED=yes, gain=0.10 (no longer valid for DLNA after recalibration)
 ```
 
 Expected services:
@@ -145,12 +146,13 @@ Expected status lines:
 Default sink: aurabridge_safe_sink
 Safe Sink node: present (aurabridge_safe_sink)
 Safe Sink downstream: alsa_output.usb-FIIO_FIIO_KA11-01.analog-stereo
-Safe Sink gain: 0.10
-Safe Sink verified: YES
+Safe Sink gain: 1.30
+Safe Sink verified: NO until re-verified at this gain
 ```
 
-The sound may be quiet. That is expected with `gain=0.10`; it was intentionally
-kept conservative during validation.
+The original `gain=0.10` was too quiet even at high AirPlay volume. The AirPlay
+loudness calibration raises the fixed gain to `1.30` and lowers the initial
+volume to `0.01` so the first playback after service changes starts quietly.
 
 ## Arbiter trap
 
@@ -247,6 +249,7 @@ This version should be described as:
 ```text
 AirPlay works end-to-end on Aura Studio 3.
 Android / DLNA phone casting is not yet usable.
+AirPlay loudness calibration is gain=1.30, initial volume=0.01.
 ```
 
 ## Do not regress these choices
@@ -260,4 +263,5 @@ Android / DLNA phone casting is not yet usable.
   validated again.
 - Do not treat `curl http://127.0.0.1:49494/...` failure as DLNA failure when
   gmrender is intentionally bound to `wlan0`.
-- Do not raise Safe Sink gain casually. `0.10` is quiet but verified-safe.
+- Do not treat the old `gain=0.10` marker as valid after the `1.30` loudness
+  calibration. Android/DLNA must be re-verified separately.

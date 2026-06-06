@@ -53,6 +53,14 @@ done
 log "Selected sink is present: ${target}"
 log "Reapplying Safe Sink so '${SINK_NODE_NAME}' targets the selected output."
 
+if [[ -z "${SAFE_SINK_GAIN:-}" ]]; then
+  active_gain="$(sed -nE 's/.*"mult"[[:space:]]*=[[:space:]]*([0-9]+([.][0-9]+)?).*/\1/p' "$CONF_PATH" 2>/dev/null | head -n1)"
+  if [[ -n "$active_gain" ]]; then
+    export SAFE_SINK_GAIN="$active_gain"
+    log "Preserving active Safe Sink gain from config: ${SAFE_SINK_GAIN}"
+  fi
+fi
+
 if [[ -z "${SAFE_SINK_GAIN:-}" && -r "$SS_MARKER" ]] && grep -q '^SAFE_SINK_VERIFIED=yes' "$SS_MARKER"; then
   marker_gain="$(sed -nE 's/^gain=([0-9]+([.][0-9]+)?).*/\1/p' "$SS_MARKER" 2>/dev/null | tail -n1)"
   if [[ -n "$marker_gain" ]]; then

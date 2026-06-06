@@ -53,7 +53,7 @@ Next manual steps (Phase 1 continues):
   1. ./scripts/setup-pipewire.sh          # install PipeWire + WirePlumber + pipewire-pulse
   2. ./scripts/wireplumber-version-check.sh   # record WirePlumber version & config model
   3. ./scripts/check-ka11.sh               # validate the FiiO KA11 USB DAC (must PASS)
-  4. ./scripts/safe-volume.sh              # set safe initial volume (0.30) BEFORE any test
+  4. ./scripts/safe-volume.sh              # set safe initial volume (0.01) BEFORE any test
 
 Reminder: keep the Aura Studio 3 physical volume LOW for the first playback test.
 The FiiO KA11 is a DAC / headphone amplifier, not a fixed-level line-out.

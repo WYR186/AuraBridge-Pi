@@ -39,7 +39,9 @@
 - **Hardware**: FiiO KA11 USB DAC → 3.5mm AUX → Aura Studio 3 AUX-IN
 - **Default Sink**: `aurabridge_safe_sink`
 - **Safe Sink Downstream**: `alsa_output.usb-FIIO_FIIO_KA11-01.analog-stereo`
-- **Verified Gain**: `0.10` (quiet by design; do not casually raise)
+- **AirPlay Loudness Gain**: `1.30` with initial volume `0.01`
+- **DLNA Safety Note**: old `gain=0.10` verification no longer applies after
+  the louder AirPlay calibration.
 
 #### Spotify Connect (Phase 3)
 - **librespot**: v0.8.0 ✅ (compiled with pulseaudio-backend, rustls-tls-webpki-roots)
@@ -107,8 +109,9 @@
    may be active for Pi-side diagnostics, but this is not a working Android
    playback path.
 2. **Bluetooth A2DP** — currently separate from the AirPlay success path.
-3. **Arbiter** — optional; install-only by default; protocol-level Stop disabled
-   unless deliberately tested.
+3. **Arbiter** — optional; install-only by default. Barge-in always mutes the
+   loser and pauses DLNA; AirPlay pause (and its `--with-dbus` build) stay opt-in
+   and use Pause, never Stop/disconnect.
 
 ### 🎵 Audio Stack (Current Flow)
 ```
@@ -159,7 +162,7 @@ FiiO KA11 → 3.5mm AUX → Aura Studio 3 (AUX-IN)
 - **SSH Access**: Username `Panda`, password `040720` (see RASPBERRY_PI_CREDENTIALS.md)
 
 ### Volume Safety
-- Initial PipeWire volume: **0.30** (safe level during bring-up)
+- Initial PipeWire volume: **0.01** (post-calibration start level)
 - **NOT** real-time protection — monitor audio carefully during first tests
 - Keep Aura Studio 3 physical volume **LOW** until confirmed stable
 

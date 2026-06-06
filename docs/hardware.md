@@ -55,7 +55,7 @@ powered speaker's AUX input at a high digital volume, it can be very loud.
 
 Consequences for this project:
 
-- Set a **safe initial PipeWire volume (0.30)** before any playback.
+- Set a **safe initial PipeWire volume (0.01)** before any playback.
 - Keep the **Aura Studio 3 physical volume low** during first tests.
 - If the KA11 exposes an ALSA hardware mixer control, note it and keep it at a
   conservative level (see [ka11-validation.md](ka11-validation.md)).

@@ -34,10 +34,10 @@ die()  { printf '[dlna][ERROR] %s\n' "$*" >&2; exit 1; }
 have() { command -v "$1" >/dev/null 2>&1; }
 
 # --- THE GATE: refuse unless the Safe Sink is verified -----------------------
-if [[ ! -f "$MARKER" ]] || ! grep -q '^SAFE_SINK_VERIFIED=yes' "$MARKER"; then
+if [[ ! -x "$SCRIPT_DIR/check-safe-sink-gate.sh" ]] || ! "$SCRIPT_DIR/check-safe-sink-gate.sh"; then
   echo "DLNA is blocked until real-time audio safety is verified."
   echo
-  warn "No verified Safe Sink found (${MARKER})."
+  warn "No verified Safe Sink found for the active gain (${MARKER})."
   warn "Run, on the Pi, in order:"
   warn "  ./scripts/setup-safe-sink.sh --apply"
   warn "  ./scripts/test-safe-sink.sh        # must report VERIFIED"
