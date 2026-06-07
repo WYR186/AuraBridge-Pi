@@ -64,16 +64,18 @@ safe_sink_downstream() {
 
 # Report a unit's active state, or "not installed" if no fragment exists.
 report_service() {
-  local label="$1" scope="$2" unit="$3"
+  local label="$1" scope="$2" unit="$3" state
   if [[ "$scope" == "user" ]]; then
     if systemctl --user cat "$unit" >/dev/null 2>&1; then
-      printf '  %-26s %s\n' "$label" "$(systemctl --user is-active "$unit" 2>/dev/null || echo unknown)"
+      state="$(systemctl --user is-active "$unit" 2>/dev/null || true)"
+      printf '  %-26s %s\n' "$label" "${state:-unknown}"
     else
       printf '  %-26s %s\n' "$label" "not installed"
     fi
   else
     if systemctl cat "$unit" >/dev/null 2>&1; then
-      printf '  %-26s %s\n' "$label" "$(systemctl is-active "$unit" 2>/dev/null || echo unknown)"
+      state="$(systemctl is-active "$unit" 2>/dev/null || true)"
+      printf '  %-26s %s\n' "$label" "${state:-unknown}"
     else
       printf '  %-26s %s\n' "$label" "not installed"
     fi
