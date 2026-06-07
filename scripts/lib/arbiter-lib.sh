@@ -2,7 +2,7 @@
 # arbiter-lib.sh — shared helpers for the AuraBridge source arbiter.
 #
 # Source it; do NOT run it directly. It only inspects the PipeWire graph (through
-# the PulseAudio API of pipewire-pulse) and sends best-effort "stop" commands to
+# the PulseAudio API of pipewire-pulse) and sends best-effort "pause" commands to
 # wireless sources. It never raises volume, so it is safe with respect to the
 # project's speaker-safety rules (see docs/volume-safety.md).
 #
@@ -106,7 +106,7 @@ arb_unmute_input() { arb_have pactl && pactl set-sink-input-mute "$1" 0 >/dev/nu
 # --- protocol-level PAUSE (best effort; per-protocol capability differs) ------
 
 # DLNA: discover the AVTransport controlURL from the renderer's device
-# description (cached), then POST a SOAP Stop. Returns non-zero on any failure;
+# description (cached), then POST a SOAP action. Returns non-zero on any failure;
 # the caller falls back to muting.
 _ARB_DLNA_CTRL=""
 arb_dlna_control_url() {

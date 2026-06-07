@@ -10,8 +10,8 @@ set -euo pipefail
 # confirms the 100%-volume hard cap). The volume guard does NOT count. DLNA can
 # push unsafe volume commands, so it must never run without a verified Safe Sink.
 #
-# Even when verified, the renderer is installed DISABLED (not enabled, no
-# autostart). Start it manually, and stop it quickly when done.
+# Even when verified, the renderer is installed DISABLED by default. Use --start
+# for a one-session test, or --enable only when boot autostart is intentional.
 #
 # See docs/dlna.md, docs/safe-sink.md, docs/volume-safety.md.
 
@@ -21,6 +21,8 @@ MARKER="$REPO_ROOT/logs/safe-sink-verified.txt"
 USER_UNIT_DIR="$HOME/.config/systemd/user"
 DLNA_NAME="${DLNA_NAME:-Aura Studio 3 DLNA}"
 SAFE_SINK_NODE="aurabridge_safe_sink"
+START_NOW=0
+ENABLE_NOW=0
 # Stable identity for the renderer: a UUID persisted under ~/.config/aurabridge so
 # control points (BubbleUPnP / Hi-Fi Cast / ...) keep recognising the SAME device
 # across reboots instead of re-discovering a "new" one each time. gmrender.service
@@ -32,6 +34,37 @@ log()  { printf '[dlna] %s\n' "$*"; }
 warn() { printf '[dlna][WARN] %s\n' "$*" >&2; }
 die()  { printf '[dlna][ERROR] %s\n' "$*" >&2; exit 1; }
 have() { command -v "$1" >/dev/null 2>&1; }
+
+case "${1:-}" in
+  ""|--install-only)
+    START_NOW=0
+    ENABLE_NOW=0
+    ;;
+  --start)
+    START_NOW=1
+    ENABLE_NOW=0
+    ;;
+  --enable)
+    START_NOW=1
+    ENABLE_NOW=1
+    ;;
+  -h|--help)
+    cat <<EOF
+Usage: ./scripts/install-dlna.sh [--install-only|--start|--enable]
+
+  --install-only   Install the gated gmrender user unit only (default).
+  --start          Install and start gmrender now, without boot autostart.
+  --enable         Install, enable, and start gmrender after the safety gate.
+
+All modes require a verified Safe Sink for the active gain. The script never
+bypasses scripts/check-safe-sink-gate.sh.
+EOF
+    exit 0
+    ;;
+  *)
+    die "Unknown argument '$1'. Use --install-only, --start, --enable, or --help."
+    ;;
+esac
 
 # --- THE GATE: refuse unless the Safe Sink is verified -----------------------
 if [[ ! -x "$SCRIPT_DIR/check-safe-sink-gate.sh" ]] || ! "$SCRIPT_DIR/check-safe-sink-gate.sh"; then
@@ -120,20 +153,47 @@ if [[ -x "$SCRIPT_DIR/safe-volume.sh" ]]; then
   "$SCRIPT_DIR/safe-volume.sh" || warn "safe-volume.sh reported an issue (continuing)."
 fi
 
+if [[ "$ENABLE_NOW" == "1" ]]; then
+  if have loginctl; then
+    loginctl enable-linger "$USER" >/dev/null 2>&1 || warn "Could not enable linger (gmrender may not run before login)."
+  fi
+  if systemctl --user enable --now gmrender.service 2>/dev/null; then
+    log "DLNA renderer enabled and started."
+  else
+    warn "Could not enable/start gmrender.service via systemctl --user."
+    warn "Try manually: systemctl --user enable --now gmrender.service"
+  fi
+elif [[ "$START_NOW" == "1" ]]; then
+  if systemctl --user start gmrender.service 2>/dev/null; then
+    log "DLNA renderer started for this session."
+  else
+    warn "Could not start gmrender.service via systemctl --user."
+    warn "Try manually: systemctl --user start gmrender.service"
+  fi
+fi
+
 # --- Tell the user exactly how to start/stop (manually) ----------------------
 cat <<EOF
 
-[dlna] DLNA renderer installed but DISABLED by default (this is intentional).
+[dlna] DLNA renderer installed. Default policy is DISABLED unless you requested
+[dlna] --start or --enable (this is intentional).
 [dlna] It routes through pipewire-pulse to the verified Safe Sink
 [dlna] ('${SAFE_SINK_NODE}'), never directly to ALSA hardware.
 
   Start manually (foreground service):   systemctl --user start gmrender.service
+  Or install+start next time:            ./scripts/install-dlna.sh --start
+  Explicit boot autostart opt-in:        ./scripts/install-dlna.sh --enable
   Check status:                          systemctl --user status gmrender.service
   Verify phones can discover it:         ./scripts/check-dlna-discovery.sh
+  Verify AirPlay+DLNA together:          ./scripts/start-discovery-stack.sh --check-only
   Quick STOP:                            systemctl --user stop gmrender.service
 
 [dlna] The unit has a start-time gate: it refuses to start unless the Safe Sink
-[dlna] is still verified. It is NOT enabled, so it will NOT start at boot.
+[dlna] is still verified. It is NOT enabled unless you explicitly used --enable.
 [dlna] Keep the Aura Studio 3 PHYSICAL volume LOW while testing DLNA.
 [dlna] DLNA is NOT made safe by the volume guard — only by the verified Safe Sink.
 EOF
+
+if [[ "$START_NOW" == "1" && -x "$SCRIPT_DIR/check-dlna-discovery.sh" ]]; then
+  "$SCRIPT_DIR/check-dlna-discovery.sh" || warn "DLNA discovery check did not pass yet. See the report above."
+fi

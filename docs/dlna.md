@@ -4,8 +4,8 @@
 > [safe-sink.md](safe-sink.md)), so DLNA must stay off. `install-dlna.sh` is now
 > a **gated installer** (not just a stub): it refuses to do anything until
 > `logs/safe-sink-verified.txt` contains `SAFE_SINK_VERIFIED=yes`.
-> `systemd/gmrender.service` exists but has a start-time gate and **no
-> `[Install]` section**, so it cannot be enabled or autostarted.
+> `systemd/gmrender.service` also has a start-time gate. It is not enabled by
+> default, but a verified system can explicitly opt into start/autostart.
 
 ## Client expectations (Xiaomi / Samsung) — read this first
 
@@ -47,7 +47,8 @@ unexpected 100% command is a real speaker-safety risk.
 ## The rule
 
 - DLNA is **blocked until real-time audio safety is verified.**
-- DLNA stays **disabled by default** even after verification (manual start only).
+- DLNA stays **disabled by default** even after verification. Use `--start` for a
+  one-session test, or `--enable` only when you intentionally want boot autostart.
 - DLNA **cannot rely on `volume-guard-loop.sh`.** Polling is recovery only and
   is explicitly **not** an acceptable safety mechanism. See
   [volume-safety.md](volume-safety.md).
@@ -75,8 +76,8 @@ check.
 2. **`gmrender.service`** has an `ExecStartPre` that re-checks the marker at
    start time, so even a manual `systemctl --user start` refuses to run if the
    Safe Sink is no longer verified.
-3. The unit has **no `[Install]` section**, so it can never be `enable`d or
-   autostarted at boot.
+3. The installer does not enable the unit by default. `--enable` is an explicit
+   operator opt-in after the same Safe Sink gate passes.
 4. The renderer routes via `PULSE_SINK=aurabridge_safe_sink` through
    pipewire-pulse — **never** to ALSA `hw:`/`plughw:`.
 
@@ -85,10 +86,20 @@ check.
 ```bash
 # Pre-req: ./scripts/setup-safe-sink.sh --apply && ./scripts/test-safe-sink.sh  (=> VERIFIED)
 ./scripts/install-dlna.sh                      # gmediarender + GStreamer codecs + stable UUID + user unit (DISABLED)
-systemctl --user start gmrender.service        # start manually (foreground service)
+./scripts/install-dlna.sh --start              # install/update + start for this session
+# or: systemctl --user start gmrender.service  # start manually (foreground service)
 systemctl --user status gmrender.service       # confirm it is running
 ./scripts/check-dlna-discovery.sh              # confirm phones can actually find it
+./scripts/start-discovery-stack.sh --check-only # confirm AirPlay + DLNA are both visible locally
 ```
+
+If you intentionally want DLNA to come back after reboots on a verified system:
+
+```bash
+./scripts/install-dlna.sh --enable
+```
+
+That remains gated at every start by `scripts/check-safe-sink-gate.sh`.
 
 The renderer appears to control points as **Aura Studio 3 DLNA**. `install-dlna.sh`
 generates a stable UUID once (`~/.config/aurabridge/dlna-uuid`); `gmrender.service`
@@ -112,13 +123,20 @@ the cause is almost always the network, not the Pi:
 
 Run the read-only checker on the Pi: `./scripts/check-dlna-discovery.sh`. It reports
 the Pi's subnet, whether the renderer is running and listening on UDP 1900 / TCP
-49494, SSDP multicast group membership, and the culprits above.
+49494, SSDP multicast group membership, and the culprits above. To check the
+combined AirPlay+DLNA discovery state, run:
+
+```bash
+./scripts/start-discovery-stack.sh --check-only
+```
 
 ## Quick disable procedure
 
 ```bash
 systemctl --user stop gmrender.service         # stop now
-# It is not enabled, so it will NOT come back on reboot. To remove entirely:
+# If you opted into autostart, disable it:
+systemctl --user disable --now gmrender.service
+# To remove entirely:
 rm -f ~/.config/systemd/user/gmrender.service && systemctl --user daemon-reload
 ```
 

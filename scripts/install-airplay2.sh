@@ -16,6 +16,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD_DIR="${AURABRIDGE_BUILD_DIR:-$HOME/aurabridge-build}"
 AIRPLAY_NAME="${AIRPLAY_NAME:-Aura Studio 3 AirPlay}"
+DISCOVERY_IFACE="${AURABRIDGE_DISCOVERY_IFACE:-${AIRPLAY_INTERFACE:-wlan0}}"
 NQPTP_REPO="${NQPTP_REPO:-https://github.com/mikebrady/nqptp.git}"
 SPS_REPO="${SPS_REPO:-https://github.com/mikebrady/shairport-sync.git}"
 
@@ -188,7 +189,7 @@ general = {
   name = "${AIRPLAY_NAME}";
   output_backend = "pipewire";
   mdns_backend = "avahi";
-  interface = "wlan0";
+  interface = "${DISCOVERY_IFACE}";
   port = 7000;
 };
 sessioncontrol = {
@@ -205,15 +206,16 @@ EOF
 
 # Keep Bonjour/AirPlay discovery predictable on this appliance image. Publishing
 # both IPv6 and loopback records made iOS occasionally cache an address that was
-# visible but failed to connect; the Pi is intended to be reached on wlan0/IPv4.
+# visible but failed to connect; the Pi is intended to be reached on one LAN
+# interface over IPv4.
 AVAHI_CONF="/etc/avahi/avahi-daemon.conf"
 if [[ -f "$AVAHI_CONF" ]]; then
-  log "Configuring Avahi to publish AuraBridge services on wlan0/IPv4 only..."
+  log "Configuring Avahi to publish AuraBridge services on ${DISCOVERY_IFACE}/IPv4 only..."
   $SUDO cp -a "$AVAHI_CONF" "${AVAHI_CONF}.bak.$(date +%Y%m%d%H%M%S)" || warn "Could not back up Avahi config."
   $SUDO sed -i -E \
     -e 's/^use-ipv4=.*/use-ipv4=yes/' \
     -e 's/^use-ipv6=.*/use-ipv6=no/' \
-    -e 's/^#?allow-interfaces=.*/allow-interfaces=wlan0/' \
+    -e "s/^#?allow-interfaces=.*/allow-interfaces=${DISCOVERY_IFACE}/" \
     "$AVAHI_CONF"
   $SUDO systemctl restart avahi-daemon.service || warn "Could not restart avahi-daemon.service."
 else

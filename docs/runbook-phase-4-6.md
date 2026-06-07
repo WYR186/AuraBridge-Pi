@@ -103,6 +103,7 @@ keep the Safe Sink off, keep DLNA disabled, and rely on AirPlay/Spotify only.
 
 ```bash
 ./scripts/install-dlna.sh             # REFUSES unless SAFE_SINK_VERIFIED=yes
+./scripts/install-dlna.sh --start     # optional: install/update + start now
 ```
 
 If the Safe Sink is not verified, the script prints *"DLNA is blocked until
@@ -114,6 +115,7 @@ only manually, and stop it when done:
 ```bash
 systemctl --user start  gmrender.service   # appears as "Aura Studio 3 DLNA"
 systemctl --user status gmrender.service
+./scripts/start-discovery-stack.sh --check-only
 systemctl --user stop   gmrender.service   # quick disable
 ```
 
@@ -124,7 +126,10 @@ Manual checks:
 - [ ] Push the control point to **100%** — confirm the Safe Sink cap keeps the
       analog output safe.
 - [ ] Record the client's behaviour in the table in [dlna.md](dlna.md).
-- [ ] `gmrender.service` is **not enabled** (won't autostart at boot).
+- [ ] AirPlay and DLNA are both locally discoverable:
+      `./scripts/start-discovery-stack.sh --check-only`.
+- [ ] `gmrender.service` is **not enabled** unless you explicitly chose DLNA
+      boot autostart with `./scripts/install-dlna.sh --enable`.
 
 ---
 

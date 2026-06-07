@@ -148,6 +148,8 @@ physical button. See [docs/hardware.md](docs/hardware.md).
 # ./scripts/setup-safe-sink.sh --apply
 # ./scripts/test-safe-sink.sh
 # ./scripts/install-dlna.sh   # refuses unless Safe Sink is verified
+# ./scripts/install-dlna.sh --start
+# ./scripts/start-discovery-stack.sh --check-only  # AirPlay + DLNA visible together
 
 # Anytime
 ./scripts/status.sh

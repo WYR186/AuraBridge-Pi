@@ -132,6 +132,16 @@ It never raises volume — it only mutes the loser by default — so it is
 **independent of the DLNA / Safe-Sink gate**. Still, validate it before leaving
 it enabled because it changes live playback ownership across protocols.
 
+Before testing barge-in, make sure discovery is already solved:
+
+```bash
+./scripts/start-discovery-stack.sh --check-only
+```
+
+If both AirPlay and DLNA are visible, then the arbiter can be tested at the
+playback layer: AirPlay -> DLNA should leave DLNA audible and mute AirPlay;
+DLNA -> AirPlay should leave AirPlay audible and mute/pause DLNA.
+
 ## How it works (implementation)
 
 - `scripts/lib/arbiter-lib.sh` — classifies each sink-input

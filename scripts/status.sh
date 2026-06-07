@@ -212,7 +212,7 @@ else
   printf '  %-26s %s\n' "DLNA SSDP:" "not listening"
 fi
 if safe_sink_verified; then
-  printf '  %-26s %s\n' "DLNA gate:" "unlockable (Safe Sink verified) — manual start only"
+  printf '  %-26s %s\n' "DLNA gate:" "unlockable (Safe Sink verified) — start/enable explicit only"
 else
   printf '  %-26s %s\n' "DLNA gate:" "BLOCKED (Safe Sink not verified)"
 fi

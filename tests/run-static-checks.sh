@@ -74,7 +74,7 @@ check_no_unsafe_match() {
 check_no_match 'hw:1' 'hw:1' scripts systemd tests --exclude='run-static-checks.sh' --exclude='preflight-dev-machine.sh' --exclude-dir=reports
 check_no_match 'plughw:1' 'plughw:1' scripts systemd tests --exclude='run-static-checks.sh' --exclude='preflight-dev-machine.sh' --exclude-dir=reports
 check_no_unsafe_match 'card 1' 'card 1' 'never assumes|never assume|do not assume|not assumed|dynamic detection' scripts systemd tests --exclude='run-static-checks.sh' --exclude='preflight-dev-machine.sh' --exclude-dir=reports
-check_no_match 'systemctl enable gmrender' 'systemctl +(--user +)?enable +gmrender|systemctl +enable +gmrender' scripts systemd docs README.md TROUBLESHOOTING.md tests --exclude='run-static-checks.sh' --exclude-dir=reports
+check_no_unsafe_match 'unconditional gmrender enable' 'systemctl +(--user +)?enable( +--now)? +gmrender|systemctl +enable( +--now)? +gmrender' 'scripts/install-dlna\.sh|--enable|explicit|opt-in|Try manually' scripts systemd docs README.md TROUBLESHOOTING.md tests --exclude='run-static-checks.sh' --exclude-dir=reports
 check_no_unsafe_match 'volume guard as speaker protection' 'volume-guard-loop\.sh.*speaker protection|volume guard.*speaker protection|protected by the volume guard' 'do .*not.*treat|not .*speaker protection|not real-time speaker protection|is not speaker protection|not a speaker protection|only.*not|recovery|diagnostics' scripts systemd docs README.md TROUBLESHOOTING.md tests --exclude='run-static-checks.sh' --exclude='preflight-dev-machine.sh' --exclude-dir=reports
 
 section "Safety gates"

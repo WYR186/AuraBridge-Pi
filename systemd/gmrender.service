@@ -27,7 +27,8 @@ ExecStartPre=%h/AuraBridge-Pi/scripts/check-safe-sink-gate.sh
 # gmediarender can start before wlan0 has an address after a hard power cycle.
 # In that case it stays "active" but never binds SSDP UDP 1900, so phones cannot
 # discover it. Wait for a real IPv4 interface before starting.
-ExecStartPre=/bin/sh -c 'for i in $(seq 1 60); do ip -o -4 addr show up scope global | grep -q "inet " && exit 0; sleep 1; done; echo "No global IPv4 address for DLNA startup" >&2; exit 1'
+Environment=AURABRIDGE_DISCOVERY_IFACE=wlan0
+ExecStartPre=/bin/sh -c 'iface="${AURABRIDGE_DISCOVERY_IFACE:-wlan0}"; for i in $(seq 1 60); do ip -o -4 addr show dev "$iface" up scope global | grep -q "inet " && exit 0; sleep 1; done; echo "No global IPv4 address on ${iface} for DLNA startup" >&2; exit 1'
 # Route through pipewire-pulse to the verified Safe Sink (NOT ALSA hardware).
 Environment=PULSE_SINK=aurabridge_safe_sink
 # Stable identity: AURABRIDGE_DLNA_UUID is generated once and persisted by
@@ -37,10 +38,10 @@ EnvironmentFile=%h/.config/aurabridge/dlna-uuid
 # --uuid keeps the device identity stable; --port pins the HTTP/SOAP port (SSDP
 # discovery itself is multicast UDP 1900) so it is predictable for firewall rules
 # and for check-dlna-discovery.sh.
-ExecStart=/usr/bin/gmediarender --interface-name wlan0 --friendly-name "Aura Studio 3 DLNA" --gstout-audiosink pulsesink --uuid ${AURABRIDGE_DLNA_UUID} --port 49494
+ExecStart=/usr/bin/gmediarender --interface-name ${AURABRIDGE_DISCOVERY_IFACE} --friendly-name "Aura Studio 3 DLNA" --gstout-audiosink pulsesink --uuid ${AURABRIDGE_DLNA_UUID} --port 49494
 # Treat "process is active but SSDP did not bind" as a failed start so systemd
 # restarts it instead of leaving a non-discoverable renderer running.
-ExecStartPost=/bin/sh -c 'for i in $(seq 1 20); do ss -lun 2>/dev/null | grep -q ":1900" && exit 0; sleep 1; done; echo "gmediarender did not bind SSDP UDP 1900" >&2; exit 1'
+ExecStartPost=/bin/sh -c 'for i in $(seq 1 20); do ss -lun 2>/dev/null | grep -q ":1900" && ss -ltn 2>/dev/null | grep -q ":49494" && exit 0; sleep 1; done; echo "gmediarender did not bind SSDP UDP 1900 and HTTP TCP 49494" >&2; exit 1'
 Restart=on-failure
 RestartSec=5
 

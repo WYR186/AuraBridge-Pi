@@ -125,11 +125,35 @@ assert_mute 10 no "unmute_all releases AirPlay"
 assert_mute 11 no "unmute_all releases Spotify"
 assert_mute 12 no "unmute_all releases DLNA"
 
-# === T6: protocol PAUSE dispatcher honours per-protocol policy ===============
+# === T6: AirPlay and DLNA barge into each other cleanly ======================
 # Stub the actual pause calls so no curl/dbus runs; record what was invoked.
 PAUSED=""
 arb_dlna_pause()    { PAUSED="$PAUSED dlna"; return 0; }
 arb_airplay_pause() { PAUSED="$PAUSED airplay"; return 0; }
+
+reset_state
+ARB_DLNA_PAUSE=1; ARB_AIRPLAY_PAUSE=0
+PAUSED=""
+set_graph "20|dlna|no|no"
+reconcile
+set_graph "20|dlna|no|no" "21|airplay|no|no"
+reconcile
+assert_mute 20 yes "AirPlay barges into older DLNA and mutes it"
+assert_mute 21 no  "AirPlay winner stays audible over DLNA"
+expect_eq "$PAUSED" " dlna" "DLNA loser receives protocol Pause on AirPlay barge-in"
+
+reset_state
+ARB_DLNA_PAUSE=1; ARB_AIRPLAY_PAUSE=0
+PAUSED=""
+set_graph "22|airplay|no|no"
+reconcile
+set_graph "22|airplay|no|no" "23|dlna|no|no"
+reconcile
+assert_mute 22 yes "DLNA barges into older AirPlay and mutes it"
+assert_mute 23 no  "DLNA winner stays audible over AirPlay"
+expect_eq "$PAUSED" "" "AirPlay loser is not protocol-paused unless opt-in"
+
+# === T7: protocol PAUSE dispatcher honours per-protocol policy ===============
 
 # DLNA on, AirPlay off (the shipped default policy).
 ARB_DLNA_PAUSE=1; ARB_AIRPLAY_PAUSE=0
