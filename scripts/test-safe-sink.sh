@@ -134,21 +134,22 @@ out "    -> audio through controlled path = ${THROUGH}"
 # --- 4. The 100% danger test -------------------------------------------------
 hr; out "4) 100% client-volume hard-cap test (physical volume LOW!)"
 DANGER="unknown"
-if [[ -t 0 ]] && have wpctl; then
+if [[ -t 0 ]]; then
   read -r -p "    Run the 100% test now? Physical volume LOW. [yes/no]: " go || go=""
   if [[ "$(printf '%s' "$go" | tr '[:upper:]' '[:lower:]')" =~ ^y(es)?$ ]]; then
     out "    Setting ${SINK_NODE_NAME} to 100% and playing a short test..."
-    wpctl set-volume "$SINK_NODE_NAME" 1.0 2>>"$TESTLOG" || out "    (could not set 100% via wpctl)"
+    pactl set-sink-volume "$SINK_NODE_NAME" 100% 2>>"$TESTLOG" || out "    (could not set 100% via pactl)"
+    pactl set-sink-mute "$SINK_NODE_NAME" 0 2>>"$TESTLOG" || true
     play_test
     DANGER="$(ask_ynq "At 100% Safe Sink volume, was the analog output DANGEROUSLY loud?")"
     # Restore safe level no matter what.
-    wpctl set-volume "$SINK_NODE_NAME" 1.00 2>>"$TESTLOG" || true
+    pactl set-sink-volume "$SINK_NODE_NAME" 100% 2>>"$TESTLOG" || true
     out "    Restored ${SINK_NODE_NAME} to 1.00."
   else
     out "    100% test skipped -> danger stays 'unknown' (cannot verify)."
   fi
 else
-  out "    Non-interactive or wpctl missing -> danger stays 'unknown' (cannot verify)."
+  out "    Non-interactive -> danger stays 'unknown' (cannot verify)."
 fi
 out "    -> dangerous at 100% = ${DANGER}"
 
