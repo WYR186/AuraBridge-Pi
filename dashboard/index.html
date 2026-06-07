@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AuraBridge Dashboard</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="主导航">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">AB</div>
+          <div>
+            <p class="eyebrow">AuraBridge</p>
+            <h1>Pi Console</h1>
+          </div>
+        </div>
+
+        <nav class="nav-list">
+          <a class="nav-item active" href="#overview">总览</a>
+          <a class="nav-item" href="#audio">音频链路</a>
+          <a class="nav-item" href="#sources">播放源</a>
+          <a class="nav-item" href="#safety">安全 gate</a>
+          <a class="nav-item" href="#events">事件</a>
+        </nav>
+
+        <div class="remote-card">
+          <p class="eyebrow">LAN 访问</p>
+          <strong data-field="lan_url">http://aurabridge.local:8080</strong>
+          <span>同 Wi-Fi 设备可打开；外网建议先走 Tailscale。</span>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">只读监控面板</p>
+            <h2 data-field="device_name">AuraBridge Pi</h2>
+          </div>
+          <div class="topbar-status">
+            <span class="status-pill ok">Online</span>
+            <span class="status-pill warning" data-field="safety_level">Safety Warning</span>
+            <button class="icon-button" id="refreshButton" type="button" aria-label="刷新状态" title="刷新状态">
+              <span aria-hidden="true">↻</span>
+            </button>
+          </div>
+        </header>
+
+        <section class="hero-grid" id="overview" aria-label="设备总览">
+          <article class="summary-panel">
+            <div class="summary-main">
+              <div>
+                <p class="eyebrow">当前播放</p>
+                <h3 data-field="current_stream">AirPlay from iPhone</h3>
+                <p class="muted">所有无线源保持可发现，仲裁策略为 newest source wins。</p>
+              </div>
+              <div class="signal-ring" aria-label="Wi-Fi signal">
+                <span data-field="signal_percent">84%</span>
+              </div>
+            </div>
+            <div class="metric-strip">
+              <div>
+                <span>输出</span>
+                <strong data-field="effective_output">USB DAC</strong>
+              </div>
+              <div>
+                <span>音量</span>
+                <strong data-field="default_volume">72%</strong>
+              </div>
+              <div>
+                <span>温度</span>
+                <strong data-field="cpu_temp">48.6°C</strong>
+              </div>
+              <div>
+                <span>运行</span>
+                <strong data-field="uptime">3 days</strong>
+              </div>
+            </div>
+          </article>
+
+          <article class="safety-panel">
+            <div class="panel-heading">
+              <p class="eyebrow">Safety</p>
+              <span class="dot warning"></span>
+            </div>
+            <h3>DLNA 暂停开放</h3>
+            <p data-field="safety_summary">DLNA remains blocked until Safe Sink is verified on the real Pi.</p>
+          </article>
+        </section>
+
+        <section class="status-grid" aria-label="核心状态">
+          <article class="status-card">
+            <span class="card-label">Host</span>
+            <strong data-field="hostname">aurabridge</strong>
+            <p data-field="ip">192.168.1.42</p>
+          </article>
+          <article class="status-card">
+            <span class="card-label">Root FS</span>
+            <strong data-field="rootfs">read-only</strong>
+            <p>磁盘占用 <span data-field="disk_used">37%</span></p>
+          </article>
+          <article class="status-card">
+            <span class="card-label">mDNS</span>
+            <strong data-field="mdns">active</strong>
+            <p>局域网名称解析</p>
+          </article>
+          <article class="status-card">
+            <span class="card-label">Internet</span>
+            <strong data-field="internet">reachable</strong>
+            <p>远程隧道前置条件</p>
+          </article>
+        </section>
+
+        <section class="content-grid">
+          <article class="panel" id="audio">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Audio Routing</p>
+                <h3>音频链路</h3>
+              </div>
+              <span class="status-pill ok" data-field="ka11_state">KA11 seen</span>
+            </div>
+            <div class="routing-map">
+              <div class="route-node">
+                <span>无线输入</span>
+                <strong>AirPlay / Spotify</strong>
+              </div>
+              <div class="route-line"></div>
+              <div class="route-node emphasized">
+                <span>默认 sink</span>
+                <strong data-field="default_sink">aurabridge_safe_sink</strong>
+              </div>
+              <div class="route-line"></div>
+              <div class="route-node">
+                <span>物理输出</span>
+                <strong data-field="downstream">alsa_output.usb-FiiO_KA11</strong>
+              </div>
+            </div>
+            <dl class="detail-list">
+              <div><dt>Output mode</dt><dd data-field="output_mode">auto</dd></div>
+              <div><dt>PipeWire</dt><dd data-field="pipewire_version">1.0.5</dd></div>
+              <div><dt>WirePlumber</dt><dd data-field="wireplumber_version">0.5.6</dd></div>
+              <div><dt>Safe Sink gain</dt><dd data-field="safe_gain">0.35</dd></div>
+            </dl>
+          </article>
+
+          <article class="panel" id="sources">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Sources</p>
+                <h3>播放源服务</h3>
+              </div>
+              <span class="muted" data-field="streams_count">1 / 2 playing</span>
+            </div>
+            <div class="service-list" id="serviceList"></div>
+          </article>
+        </section>
+
+        <section class="content-grid compact">
+          <article class="panel" id="safety">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Safety Gate</p>
+                <h3>保护状态</h3>
+              </div>
+            </div>
+            <div class="check-list" id="safetyChecks"></div>
+          </article>
+
+          <article class="panel" id="events">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Events</p>
+                <h3>最近事件</h3>
+              </div>
+              <span class="muted" data-field="generated_at">--</span>
+            </div>
+            <div class="timeline" id="eventList"></div>
+          </article>
+        </section>
+      </main>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

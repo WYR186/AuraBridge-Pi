@@ -1,0 +1,135 @@
+{
+  "generated_at": "2026-06-06T16:42:00-05:00",
+  "device": {
+    "name": "AuraBridge Pi",
+    "model": "Raspberry Pi 4 Model B",
+    "hostname": "aurabridge",
+    "ip": "192.168.1.42",
+    "lan_url": "http://aurabridge.local:8080",
+    "uptime": "3 days, 7 hours",
+    "cpu_temp_c": 48.6,
+    "disk_used_percent": 37,
+    "rootfs": "read-only",
+    "network": {
+      "mode": "Wi-Fi",
+      "ssid": "Home Studio",
+      "signal_percent": 84,
+      "internet": "reachable",
+      "mdns": "active"
+    }
+  },
+  "audio": {
+    "output_mode": "auto",
+    "effective_output": "USB DAC",
+    "default_sink": "aurabridge_safe_sink",
+    "default_volume": 72,
+    "pipewire_version": "1.0.5",
+    "wireplumber_version": "0.5.6",
+    "ka11_usb": true,
+    "ka11_sink": true,
+    "safe_sink": {
+      "node": "present",
+      "verified": false,
+      "current_gain": "0.35",
+      "marker_gain": null,
+      "downstream": "alsa_output.usb-FiiO_KA11"
+    }
+  },
+  "services": [
+    {
+      "name": "AirPlay",
+      "unit": "shairport-sync.service",
+      "scope": "system",
+      "state": "active",
+      "detail": "Aura Studio 3 AirPlay"
+    },
+    {
+      "name": "NQPTP",
+      "unit": "nqptp.service",
+      "scope": "system",
+      "state": "active",
+      "detail": "AirPlay 2 timing"
+    },
+    {
+      "name": "Spotify Connect",
+      "unit": "librespot.service",
+      "scope": "user",
+      "state": "active",
+      "detail": "Aura Studio 3 Spotify"
+    },
+    {
+      "name": "Bluetooth",
+      "unit": "bluetooth.service",
+      "scope": "system",
+      "state": "inactive",
+      "detail": "Pairing window closed"
+    },
+    {
+      "name": "DLNA",
+      "unit": "gmrender.service",
+      "scope": "user",
+      "state": "blocked",
+      "detail": "Safe Sink not verified"
+    },
+    {
+      "name": "Source Arbiter",
+      "unit": "aurabridge-arbiter.service",
+      "scope": "user",
+      "state": "active",
+      "detail": "Newest source wins"
+    }
+  ],
+  "streams": {
+    "total": 2,
+    "playing": 1,
+    "current": "AirPlay from iPhone"
+  },
+  "safety": {
+    "level": "warning",
+    "summary": "DLNA remains blocked until Safe Sink is verified on the real Pi.",
+    "checks": [
+      {
+        "label": "Safe Sink verified",
+        "state": "warning",
+        "value": "No"
+      },
+      {
+        "label": "Default clients route through Safe Sink",
+        "state": "ok",
+        "value": "Yes"
+      },
+      {
+        "label": "USB DAC detected",
+        "state": "ok",
+        "value": "FiiO KA11"
+      },
+      {
+        "label": "DLNA gate",
+        "state": "warning",
+        "value": "Blocked by design"
+      }
+    ]
+  },
+  "events": [
+    {
+      "time": "16:41",
+      "kind": "route",
+      "message": "AirPlay stream routed through aurabridge_safe_sink"
+    },
+    {
+      "time": "16:38",
+      "kind": "service",
+      "message": "librespot.service active"
+    },
+    {
+      "time": "16:32",
+      "kind": "safety",
+      "message": "DLNA held because Safe Sink marker is missing"
+    },
+    {
+      "time": "16:29",
+      "kind": "device",
+      "message": "FiiO KA11 detected as USB audio sink"
+    }
+  ]
+}
