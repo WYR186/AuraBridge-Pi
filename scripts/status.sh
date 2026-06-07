@@ -148,8 +148,8 @@ if have pactl; then
   if [[ -z "$managed" ]]; then
     total=0; playing=0
   else
-    total="$(printf '%s\n' "$managed" | grep -c '|')"
-    playing="$(printf '%s\n' "$managed" | grep -c '|no|')"
+    total="$(printf '%s\n' "$managed" | grep -c '|' || true)"
+    playing="$(printf '%s\n' "$managed" | grep -c '|no|' || true)"
   fi
   printf '  %-26s %s\n' "Wireless streams (total):" "$total"
   printf '  %-26s %s\n' "Currently playing:" "$playing"
